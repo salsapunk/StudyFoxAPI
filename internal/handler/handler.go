@@ -17,7 +17,7 @@ func NewTaskHand(TaskServ *service.TaskService) *TaskHandler {
 	}
 }
 
-func CheckHealth(c *gin.Context) {
+func (tH *TaskHandler) CheckHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "pong",
 	})

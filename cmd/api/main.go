@@ -18,14 +18,14 @@ func main() {
 		log.Errorf("%t", err)
 		return
 	}
-
-	repository.NewTaskRepo()
-	service.NewTaskServ()
-	handler.NewTaskHand()
+	
+	taskRepository := repository.NewTaskRepo(pool)
+	taskService := service.NewTaskServ(taskRepository)
+	taskHandler := handler.NewTaskHand(taskService)
 
 	router := gin.Default()
+	
+	router.GET("/ping", taskHandler.CheckHealth)
 
-	router.GET("/ping", handler.CheckHealth)
-
-	router.Run()
+	router.Run(":8080")
 }
