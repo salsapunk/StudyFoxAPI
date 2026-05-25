@@ -24,10 +24,34 @@ func (tH *TaskHandler) CheckHealth(c *gin.Context) {
 	})
 }
 
+// GET
+
+func (tH *TaskHandler) LerUsuario(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	usuario, err := tH.service.LerUsuario(ctx)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, model.Response{
+			Success: false,
+			Data:    usuario,
+			Error: &model.ErrorInfo{
+				Code:    http.StatusBadGateway,
+				Message: err,
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusAccepted, model.Response{
+		Success: true,
+		Data:    usuario,
+	})
+}
+
 func (tH *TaskHandler) ListarMaterias(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	materias, err := tH.service.ListMaterias(ctx)
+	materias, err := tH.service.ListarMaterias(ctx)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, model.Response{
 			Success: false,
@@ -44,4 +68,44 @@ func (tH *TaskHandler) ListarMaterias(c *gin.Context) {
 		Success: true,
 		Data:    materias,
 	})
+}
+
+func (tH *TaskHandler) ListarTarefas(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	tarefas, err := tH.service.ListarTarefas(ctx)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, model.Response{
+			Success: false,
+			Data:    tarefas,
+			Error: &model.ErrorInfo{
+				Code:    http.StatusBadGateway,
+				Message: err,
+			},
+		})
+		return
+	}
+
+	c.JSON(http.StatusAccepted, model.Response{
+		Success: true,
+		Data:    tarefas,
+	})
+}
+
+func (tH *TaskHandler) LerTarefa(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	tarefa, err := tH.service.LerTarefa(ctx)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, model.Response{
+			Success: false,
+			Data:    tarefa,
+			Error: &model.ErrorInfo{
+				Code:    http.StatusBadGateway,
+				Message: err,
+			},
+		})
+		return
+	}
+
 }

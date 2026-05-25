@@ -35,10 +35,12 @@ func main() {
 	router := gin.Default()
 	router.SetTrustedProxies([]string{"192.186.0.10"})
 
+	// GET
 	router.GET("/api/v1/ping", taskHandler.CheckHealth)
+	router.GET("/api/v1/usuario/:matricula", taskHandler.LerUsuario)
 	router.GET("/api/v1/usuario/:matricula/materias", taskHandler.ListarMaterias)
-	//router.GET("/api/v1/usuario/:matricula/materia/:codigo/tarefas", taskHandler.ListarTarefas)
-	//router.GET("/api/v1/usuario/:matricula/materia/:codigo/tarefa/:id", taskHandler.LerTarefa)
+	router.GET("/api/v1/usuario/:matricula/materia/:codigo/tarefas", taskHandler.ListarTarefas)
+	router.GET("/api/v1/usuario/:matricula/materia/:codigo/tarefa/:id", taskHandler.LerTarefa)
 
 	router.Run(":8080")
 }

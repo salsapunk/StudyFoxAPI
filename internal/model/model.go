@@ -2,7 +2,6 @@ package model
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -47,7 +46,7 @@ func Fail(c *gin.Context, status int, code int, message error) {
 
 // Modelos
 
-type User struct {
+type Usuario struct {
 	Matricula  int    `json:"matricula_usuario"`
 	Nome       string `json:"nome_usuario"`
 	Sobrenome  string `json:"sobrenome_usuario"`
@@ -63,8 +62,8 @@ type Materia struct {
 }
 
 type Tarefa struct {
-	Id     int       `json:"id_tarefa"`
-	Nome   string    `json:"nome_tarefa"`
-	Prazo  time.Time `json:"prazo_tarefa"`
-	Codigo int       `json:"codigo_materia_tarefa"`
+	Id     int    `json:"id_tarefa"`
+	Nome   string `json:"nome_tarefa"`
+	Prazo  string `json:"prazo_tarefa"`
+	Codigo int    `json:"codigo_materia_tarefa"`
 }
