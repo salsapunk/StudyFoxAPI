@@ -18,10 +18,49 @@ func NewTaskRepo(pool *pgxpool.Pool) *TaskRepository {
 	}
 }
 
-// GET
+// CREATE
+
+func (tR *TaskRepository) CriarUsuario(ctx context.Context, usuario *model.Usuario) (int, error) {
+	row := tR.pool.QueryRow(ctx, model.CRIAR_USUARIO,
+		&usuario.Matricula,
+		&usuario.Nome,
+		&usuario.Sobrenome,
+		&usuario.Email,
+		&usuario.Senha_hash,
+		&usuario.Tema,
+	)
+
+	var matricula int
+
+	err := row.Scan(&matricula)
+	if err != nil {
+		return 0, err
+	}
+
+	return matricula, nil
+}
+
+func (tR *TaskRepository) CriarMateria(ctx context.Context, materia *model.Materia) (int, error) {
+	row := tR.pool.QueryRow(ctx, model.CRIAR_MATERIA,
+		&materia.Codigo,
+		&materia.Nome,
+		&materia.Matricula,
+	)
+
+	var codigo int
+
+	err := row.Scan(&codigo)
+	if err != nil {
+		return 0, err
+	}
+
+	return codigo, nil
+}
+
+// READ
 
 func (tR *TaskRepository) LerUsuario(ctx context.Context) (model.Usuario, error) {
-	row := tR.pool.QueryRow(ctx, "SELECT matricula, email, senha_hash, tema FROM usuario;")
+	row := tR.pool.QueryRow(ctx, model.LER_USUARIO)
 
 	var usuario model.Usuario
 
@@ -39,7 +78,7 @@ func (tR *TaskRepository) LerUsuario(ctx context.Context) (model.Usuario, error)
 }
 
 func (tR *TaskRepository) ListarMaterias(ctx context.Context) ([]model.Materia, error) {
-	rows, err := tR.pool.Query(ctx, "SELECT * FROM materia;")
+	rows, err := tR.pool.Query(ctx, model.LISTAR_MATERIAS)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return []model.Materia{}, err
@@ -68,7 +107,7 @@ func (tR *TaskRepository) ListarMaterias(ctx context.Context) ([]model.Materia, 
 }
 
 func (tR *TaskRepository) ListarTarefas(ctx context.Context) ([]model.Tarefa, error) {
-	rows, err := tR.pool.Query(ctx, "SELECT * FROM tarefa;")
+	rows, err := tR.pool.Query(ctx, model.LISTAR_TAREFAS)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return []model.Tarefa{}, err
@@ -98,7 +137,7 @@ func (tR *TaskRepository) ListarTarefas(ctx context.Context) ([]model.Tarefa, er
 }
 
 func (tR *TaskRepository) LerTarefa(ctx context.Context) (model.Tarefa, error) {
-	row := tR.pool.QueryRow(ctx, "SELECT matricula, email, senha_hash, tema FROM tarefa;")
+	row := tR.pool.QueryRow(ctx, model.LER_TAREFA)
 
 	var tarefa model.Tarefa
 

@@ -6,6 +6,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	CRIAR_USUARIO   = "INSERT INTO usuario(matricula, nome, sobrenome, email, senha_hash, tema) VALUES($1, $2, $3, $4, $5, $6) RETURNING matricula;"
+	CRIAR_MATERIA   = "INSERT INTO materia(codigo, nome, matricula) VALUES($1, $2, $3) RETURNING codigo;"
+	LER_USUARIO     = "SELECT matricula, email, senha_hash, tema FROM usuario;"
+	LISTAR_MATERIAS = "SELECT * FROM materia;"
+	LISTAR_TAREFAS  = "SELECT * FROM tarefa;"
+	LER_TAREFA      = "SELECT matricula, email, senha_hash, tema FROM tarefa;"
+)
+
 // Responses
 
 type ErrorInfo struct {
@@ -47,23 +56,23 @@ func Fail(c *gin.Context, status int, code int, message error) {
 // Modelos
 
 type Usuario struct {
-	Matricula  int    `json:"matricula_usuario"`
-	Nome       string `json:"nome_usuario"`
+	Matricula  int    `json:"matricula_usuario" validate:"required"`
+	Nome       string `json:"nome_usuario" validate:"required"`
 	Sobrenome  string `json:"sobrenome_usuario"`
-	Email      string `json:"email_usuario"`
-	Senha_hash string `json:"senha_hash"`
-	Tema       string `json:"tema_usuario"`
+	Email      string `json:"email_usuario" validate:"required"`
+	Senha_hash string `json:"senha_hash" validate:"required"`
+	Tema       string `json:"tema_usuario" validate:"required"`
 }
 
 type Materia struct {
-	Codigo    int    `json:"codigo_materia"`
-	Nome      string `json:"nome_materia"`
-	Matricula int    `json:"matricula_usuario_materia"`
+	Codigo    int    `json:"codigo_materia" validate:"required"`
+	Nome      string `json:"nome_materia" validate:"required"`
+	Matricula int    `json:"matricula_usuario_materia" validate:"required"`
 }
 
 type Tarefa struct {
-	Id     int    `json:"id_tarefa"`
-	Nome   string `json:"nome_tarefa"`
-	Prazo  string `json:"prazo_tarefa"`
-	Codigo int    `json:"codigo_materia_tarefa"`
+	Id     int    `json:"id_tarefa" validate:"required"`
+	Nome   string `json:"nome_tarefa" validate:"required"`
+	Prazo  string `json:"prazo_tarefa" time_format:"02-01-2006"`
+	Codigo int    `json:"codigo_materia_tarefa" validate:"required"`
 }

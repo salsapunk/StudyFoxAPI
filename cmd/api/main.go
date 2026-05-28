@@ -35,12 +35,25 @@ func main() {
 	router := gin.Default()
 	router.SetTrustedProxies([]string{"192.186.0.10"})
 
-	// GET
+	// CREATE
+	router.POST("/api/v1/usuario", taskHandler.CriarUsuario)
+	// router.POST("/api/v1/usuario/:matricula/materia", taskHandler.CriarMateria)
+	// router.POST("/api/v1/usuario/:matricula/:codigo/tarefa", taskHandler.CriarTarefa)
+
+	// READ
 	router.GET("/api/v1/ping", taskHandler.CheckHealth)
 	router.GET("/api/v1/usuario/:matricula", taskHandler.LerUsuario)
 	router.GET("/api/v1/usuario/:matricula/materias", taskHandler.ListarMaterias)
 	router.GET("/api/v1/usuario/:matricula/materia/:codigo/tarefas", taskHandler.ListarTarefas)
 	router.GET("/api/v1/usuario/:matricula/materia/:codigo/tarefa/:id", taskHandler.LerTarefa)
+
+	// UPDATE
+	// ?
+
+	// DELETE
+	// router.DELETE("/api/v1/usuario/:matricula", taskHandler.DeletarUsuario)
+	// router.DELETE("/api/v1/usuario/:matricula/materia/:codigo", taskHandler.DeletarMateria)
+	// router.DELETE("/api/v1/usuario/:matricula/materia/:codigo/tarefa/:id", taskHandler.DeletarTarefa)
 
 	router.Run(":8080")
 }
