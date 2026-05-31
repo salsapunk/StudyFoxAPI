@@ -2,17 +2,20 @@ package model
 
 import (
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 const (
-	CRIAR_USUARIO   = "INSERT INTO usuario(matricula, nome, sobrenome, email, senha_hash, tema) VALUES($1, $2, $3, $4, $5, $6) RETURNING matricula;"
-	CRIAR_MATERIA   = "INSERT INTO materia(codigo, nome, matricula) VALUES($1, $2, $3) RETURNING codigo;"
-	LER_USUARIO     = "SELECT matricula, email, senha_hash, tema FROM usuario;"
-	LISTAR_MATERIAS = "SELECT * FROM materia;"
-	LISTAR_TAREFAS  = "SELECT * FROM tarefa;"
-	LER_TAREFA      = "SELECT matricula, email, senha_hash, tema FROM tarefa;"
+	CRIAR_USUARIO   = "INSERT INTO usuario(email, senha_hash) VALUES($1, $2) RETURNING matricula;"
+	CRIAR_MATERIA   = "INSERT INTO materia(nome, matricula) VALUES($1, $2) RETURNING codigo;"
+	CRIAR_TAREFA    = "INSERT INTO tarefa(nome, anotacao, prazo, codigo) VALUES($1, $2, $3, $4) RETURNING id;"
+	LER_USUARIO     = "SELECT matricula, email, senha_hash, tema FROM usuario WHERE matricula = $1;"
+	LISTAR_MATERIAS = "SELECT codigo, nome, m.matricula FROM materia m INNER JOIN usuario u ON m.matricula = u.matricula AND u.matricula = $1;"   //materias de um usuario
+	LISTAR_TAREFAS  = "SELECT id, t.nome, prazo, anotacao, t.codigo FROM tarefa t INNER JOIN materia m ON t.codigo = m.codigo AND m.codigo = $1;" // tarefas em uma matéria
+	LER_TAREFA      = "SELECT id, t.nome, anotacao, prazo, t.codigo FROM tarefa t INNER JOIN materia m ON t.codigo = m.codigo AND id = $1;"
 )
 
 // Responses
@@ -56,23 +59,36 @@ func Fail(c *gin.Context, status int, code int, message error) {
 // Modelos
 
 type Usuario struct {
-	Matricula  int    `json:"matricula_usuario" validate:"required"`
-	Nome       string `json:"nome_usuario" validate:"required"`
-	Sobrenome  string `json:"sobrenome_usuario"`
-	Email      string `json:"email_usuario" validate:"required"`
-	Senha_hash string `json:"senha_hash" validate:"required"`
-	Tema       string `json:"tema_usuario" validate:"required"`
+	Matricula  int    `json:"matricula_usuario"`
+	Email      string `json:"email" validate:"required"`
+	Senha_hash string `json:"senha" validate:"required"`
+	Tema       string `json:"tema"`
 }
 
 type Materia struct {
-	Codigo    int    `json:"codigo_materia" validate:"required"`
-	Nome      string `json:"nome_materia" validate:"required"`
-	Matricula int    `json:"matricula_usuario_materia" validate:"required"`
+	Codigo    int    `json:"codigo_materia"`
+	Nome      string `json:"nome" validate:"required"`
+	Matricula int    `json:"matricula_usuario" validate:"required"`
+}
+
+type Date struct {
+	time.Time
+}
+
+func (d *Date) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return err
+	}
+	d.Time = t
+	return nil
 }
 
 type Tarefa struct {
-	Id     int    `json:"id_tarefa" validate:"required"`
-	Nome   string `json:"nome_tarefa" validate:"required"`
-	Prazo  string `json:"prazo_tarefa" time_format:"02-01-2006"`
-	Codigo int    `json:"codigo_materia_tarefa" validate:"required"`
+	Id       int    `json:"id_tarefa"`
+	Nome     string `json:"nome" validate:"required"`
+	Prazo    Date   `json:"prazo"`
+	Anotacao string `json:"anotacao"`
+	Codigo   int    `json:"codigo_materia" validate:"required"`
 }

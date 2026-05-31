@@ -37,15 +37,15 @@ func main() {
 
 	// CREATE
 	router.POST("/api/v1/usuario", taskHandler.CriarUsuario)
-	// router.POST("/api/v1/usuario/:matricula/materia", taskHandler.CriarMateria)
-	// router.POST("/api/v1/usuario/:matricula/:codigo/tarefa", taskHandler.CriarTarefa)
+	router.POST("/api/v1/usuario/:matricula/materia", taskHandler.CriarMateria)
+	router.POST("/api/v1/materia/:codigo/tarefa", taskHandler.CriarTarefa)
 
 	// READ
 	router.GET("/api/v1/ping", taskHandler.CheckHealth)
 	router.GET("/api/v1/usuario/:matricula", taskHandler.LerUsuario)
 	router.GET("/api/v1/usuario/:matricula/materias", taskHandler.ListarMaterias)
-	router.GET("/api/v1/usuario/:matricula/materia/:codigo/tarefas", taskHandler.ListarTarefas)
-	router.GET("/api/v1/usuario/:matricula/materia/:codigo/tarefa/:id", taskHandler.LerTarefa)
+	router.GET("/api/v1/materia/:codigo/tarefas", taskHandler.ListarTarefas)
+	router.GET("/api/v1/materia/:codigo/tarefa/:id", taskHandler.LerTarefa)
 
 	// UPDATE
 	// ?

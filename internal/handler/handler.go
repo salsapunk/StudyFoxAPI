@@ -3,7 +3,9 @@ package handler
 // arrumar os códigos dos erros
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/salsapunk/StudyFoxAPI/internal/model"
@@ -30,9 +32,11 @@ func (tH *TaskHandler) CriarUsuario(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	var usuario model.Usuario
+
 	err := c.ShouldBindJSON(&usuario)
 	if err != nil {
-		model.Fail(c, http.StatusBadRequest, 400, err)
+		fmt.Println("\nshouldbind")
+		model.Fail(c, http.StatusBadRequest, 1, err)
 		return
 	}
 
@@ -48,12 +52,21 @@ func (tH *TaskHandler) CriarUsuario(c *gin.Context) {
 func (tH *TaskHandler) CriarMateria(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	param := c.Param("matricula")
+	matricula, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, http.StatusBadRequest, err)
+		return
+	}
+
 	var materia model.Materia
-	err := c.ShouldBindJSON(&materia)
+	err = c.ShouldBindJSON(&materia)
 	if err != nil {
 		model.Fail(c, http.StatusBadGateway, 400, err)
 		return
 	}
+
+	materia.Matricula = matricula
 
 	codigo, err := tH.service.CriarMateria(ctx, &materia)
 	if err != nil {
@@ -64,10 +77,47 @@ func (tH *TaskHandler) CriarMateria(c *gin.Context) {
 	model.OK(c, codigo)
 }
 
+func (tH *TaskHandler) CriarTarefa(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	param := c.Param("codigo")
+	codigo, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 400, err)
+		return
+	}
+
+	var tarefa model.Tarefa
+	err = c.ShouldBindJSON(&tarefa)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 400, err)
+		return
+	}
+
+	tarefa.Codigo = codigo
+
+	id, err := tH.service.CriarTarefa(ctx, &tarefa)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 400, err)
+		return
+	}
+
+	model.OK(c, id)
+}
+
+// READ
+
 func (tH *TaskHandler) LerUsuario(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	usuario, err := tH.service.LerUsuario(ctx)
+	param := c.Param("matricula")
+	matricula, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, http.StatusBadRequest, err)
+		return
+	}
+
+	usuario, err := tH.service.LerUsuario(ctx, matricula)
 	if err != nil {
 		model.Fail(c, http.StatusBadGateway, 400, err)
 		return
@@ -79,7 +129,14 @@ func (tH *TaskHandler) LerUsuario(c *gin.Context) {
 func (tH *TaskHandler) ListarMaterias(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	materias, err := tH.service.ListarMaterias(ctx)
+	param := c.Param("matricula")
+	matricula, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 400, err)
+		return
+	}
+
+	materias, err := tH.service.ListarMaterias(ctx, matricula)
 	if err != nil {
 		model.Fail(c, http.StatusBadGateway, 400, err)
 		return
@@ -91,9 +148,16 @@ func (tH *TaskHandler) ListarMaterias(c *gin.Context) {
 func (tH *TaskHandler) ListarTarefas(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	tarefas, err := tH.service.ListarTarefas(ctx)
+	param := c.Param("codigo")
+	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 400, err)
+		model.Fail(c, http.StatusBadGateway, 399, err)
+		return
+	}
+
+	tarefas, err := tH.service.ListarTarefas(ctx, codigo)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 100, err)
 		return
 	}
 
@@ -103,7 +167,14 @@ func (tH *TaskHandler) ListarTarefas(c *gin.Context) {
 func (tH *TaskHandler) LerTarefa(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	tarefa, err := tH.service.LerTarefa(ctx)
+	param := c.Param("id")
+	id, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 399, err)
+		return
+	}
+
+	tarefa, err := tH.service.LerTarefa(ctx, id)
 	if err != nil {
 		model.Fail(c, http.StatusBadGateway, 400, err)
 		return

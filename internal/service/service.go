@@ -26,7 +26,7 @@ func (tS *TaskService) CriarUsuario(ctx context.Context, usuario *model.Usuario)
 		return 0, err
 	}
 
-	matricula, err := tS.CriarUsuario(ctx, usuario)
+	matricula, err := tS.repository.CriarUsuario(ctx, usuario)
 	if err != nil {
 		return 0, err
 	}
@@ -42,7 +42,7 @@ func (tS *TaskService) CriarMateria(ctx context.Context, materia *model.Materia)
 		return 0, err
 	}
 
-	codigo, err := tS.CriarMateria(ctx, materia)
+	codigo, err := tS.repository.CriarMateria(ctx, materia)
 	if err != nil {
 		return 0, err
 	}
@@ -50,8 +50,25 @@ func (tS *TaskService) CriarMateria(ctx context.Context, materia *model.Materia)
 	return codigo, nil
 }
 
-func (tS *TaskService) LerUsuario(ctx context.Context) (model.Usuario, error) {
-	usuario, err := tS.repository.LerUsuario(ctx)
+func (tS *TaskService) CriarTarefa(ctx context.Context, tarefa *model.Tarefa) (int, error) {
+	validate := validator.New()
+
+	err := validate.Struct(tarefa)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := tS.repository.CriarTarefa(ctx, tarefa)
+	if err != nil {
+		return 0, nil
+	}
+
+	return id, nil
+}
+
+// READ
+func (tS *TaskService) LerUsuario(ctx context.Context, matricula int) (model.Usuario, error) {
+	usuario, err := tS.repository.LerUsuario(ctx, matricula)
 	if err != nil {
 		return usuario, err
 	}
@@ -59,8 +76,8 @@ func (tS *TaskService) LerUsuario(ctx context.Context) (model.Usuario, error) {
 	return usuario, nil
 }
 
-func (tS *TaskService) ListarMaterias(ctx context.Context) ([]model.Materia, error) {
-	materias, err := tS.repository.ListarMaterias(ctx)
+func (tS *TaskService) ListarMaterias(ctx context.Context, matricula int) ([]model.Materia, error) {
+	materias, err := tS.repository.ListarMaterias(ctx, matricula)
 	if err != nil {
 		return materias, err
 	}
@@ -68,8 +85,8 @@ func (tS *TaskService) ListarMaterias(ctx context.Context) ([]model.Materia, err
 	return materias, nil
 }
 
-func (tS *TaskService) ListarTarefas(ctx context.Context) ([]model.Tarefa, error) {
-	tarefas, err := tS.repository.ListarTarefas(ctx)
+func (tS *TaskService) ListarTarefas(ctx context.Context, codigo int) ([]model.Tarefa, error) {
+	tarefas, err := tS.repository.ListarTarefas(ctx, codigo)
 	if err != nil {
 		return tarefas, err
 	}
@@ -77,8 +94,8 @@ func (tS *TaskService) ListarTarefas(ctx context.Context) ([]model.Tarefa, error
 	return tarefas, nil
 }
 
-func (tS *TaskService) LerTarefa(ctx context.Context) (model.Tarefa, error) {
-	tarefa, err := tS.repository.LerTarefa(ctx)
+func (tS *TaskService) LerTarefa(ctx context.Context, id int) (model.Tarefa, error) {
+	tarefa, err := tS.repository.LerTarefa(ctx, id)
 	if err != nil {
 		return tarefa, err
 	}

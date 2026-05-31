@@ -22,12 +22,8 @@ func NewTaskRepo(pool *pgxpool.Pool) *TaskRepository {
 
 func (tR *TaskRepository) CriarUsuario(ctx context.Context, usuario *model.Usuario) (int, error) {
 	row := tR.pool.QueryRow(ctx, model.CRIAR_USUARIO,
-		&usuario.Matricula,
-		&usuario.Nome,
-		&usuario.Sobrenome,
 		&usuario.Email,
 		&usuario.Senha_hash,
-		&usuario.Tema,
 	)
 
 	var matricula int
@@ -42,7 +38,6 @@ func (tR *TaskRepository) CriarUsuario(ctx context.Context, usuario *model.Usuar
 
 func (tR *TaskRepository) CriarMateria(ctx context.Context, materia *model.Materia) (int, error) {
 	row := tR.pool.QueryRow(ctx, model.CRIAR_MATERIA,
-		&materia.Codigo,
 		&materia.Nome,
 		&materia.Matricula,
 	)
@@ -51,16 +46,35 @@ func (tR *TaskRepository) CriarMateria(ctx context.Context, materia *model.Mater
 
 	err := row.Scan(&codigo)
 	if err != nil {
+		fmt.Println("scan")
 		return 0, err
 	}
 
 	return codigo, nil
 }
 
+func (tR *TaskRepository) CriarTarefa(ctx context.Context, tarefa *model.Tarefa) (int, error) {
+	row := tR.pool.QueryRow(ctx, model.CRIAR_TAREFA,
+		&tarefa.Nome,
+		&tarefa.Anotacao,
+		&tarefa.Prazo.Time,
+		&tarefa.Codigo,
+	)
+
+	var id int
+
+	err := row.Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}
+
 // READ
 
-func (tR *TaskRepository) LerUsuario(ctx context.Context) (model.Usuario, error) {
-	row := tR.pool.QueryRow(ctx, model.LER_USUARIO)
+func (tR *TaskRepository) LerUsuario(ctx context.Context, matricula int) (model.Usuario, error) {
+	row := tR.pool.QueryRow(ctx, model.LER_USUARIO, matricula)
 
 	var usuario model.Usuario
 
@@ -77,8 +91,8 @@ func (tR *TaskRepository) LerUsuario(ctx context.Context) (model.Usuario, error)
 	return usuario, nil
 }
 
-func (tR *TaskRepository) ListarMaterias(ctx context.Context) ([]model.Materia, error) {
-	rows, err := tR.pool.Query(ctx, model.LISTAR_MATERIAS)
+func (tR *TaskRepository) ListarMaterias(ctx context.Context, matricula int) ([]model.Materia, error) {
+	rows, err := tR.pool.Query(ctx, model.LISTAR_MATERIAS, matricula)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return []model.Materia{}, err
@@ -106,8 +120,8 @@ func (tR *TaskRepository) ListarMaterias(ctx context.Context) ([]model.Materia, 
 	return materias, nil
 }
 
-func (tR *TaskRepository) ListarTarefas(ctx context.Context) ([]model.Tarefa, error) {
-	rows, err := tR.pool.Query(ctx, model.LISTAR_TAREFAS)
+func (tR *TaskRepository) ListarTarefas(ctx context.Context, codigo int) ([]model.Tarefa, error) {
+	rows, err := tR.pool.Query(ctx, model.LISTAR_TAREFAS, codigo)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return []model.Tarefa{}, err
@@ -120,7 +134,8 @@ func (tR *TaskRepository) ListarTarefas(ctx context.Context) ([]model.Tarefa, er
 		err = rows.Scan(
 			&tarefa.Id,
 			&tarefa.Nome,
-			&tarefa.Prazo,
+			&tarefa.Anotacao,
+			&tarefa.Prazo.Time,
 			&tarefa.Codigo,
 		)
 		if err != nil {
@@ -136,15 +151,16 @@ func (tR *TaskRepository) ListarTarefas(ctx context.Context) ([]model.Tarefa, er
 	return tarefas, nil
 }
 
-func (tR *TaskRepository) LerTarefa(ctx context.Context) (model.Tarefa, error) {
-	row := tR.pool.QueryRow(ctx, model.LER_TAREFA)
+func (tR *TaskRepository) LerTarefa(ctx context.Context, id int) (model.Tarefa, error) {
+	row := tR.pool.QueryRow(ctx, model.LER_TAREFA, id)
 
 	var tarefa model.Tarefa
 
 	err := row.Scan(
 		&tarefa.Id,
 		&tarefa.Nome,
-		&tarefa.Prazo,
+		&tarefa.Anotacao,
+		&tarefa.Prazo.Time,
 		&tarefa.Codigo,
 	)
 	if err != nil {
