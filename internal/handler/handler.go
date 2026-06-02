@@ -277,7 +277,7 @@ func (tH *TaskHandler) DeletarTarefa(c *gin.Context) {
 		return
 	}
 
-	err = tH.service.DeletarMateria(ctx, codigo, id)
+	err = tH.service.DeletarTarefa(ctx, codigo, id)
 	if err != nil {
 		model.Fail(c, http.StatusBadRequest, 400, err)
 		return

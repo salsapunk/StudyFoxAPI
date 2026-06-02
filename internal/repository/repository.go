@@ -189,13 +189,62 @@ func (tR *TaskRepository) LerTarefa(ctx context.Context, codigo int, id int) (mo
 
 // UPDATE
 
-// ...
+func (tR *TaskRepository) MudarEmail(ctx context.Context, matricula int) error {
+	_, err := tR.pool.Exec(ctx, model.MUDAR_EMAIL_USR, matricula)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (tR *TaskRepository) MudarSenha(ctx context.Context, matricula int) error {
+	_, err := tR.pool.Exec(ctx, model.MUDAR_SENHA_USR, matricula)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (tR *TaskRepository) MudarNomeMateria(ctx context.Context, codigo int, matricula int) error {
+	_, err := tR.pool.Exec(ctx, model.MUDAR_NOME_MAT, codigo, matricula)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tR *TaskRepository) MudarNomeTarefa(ctx context.Context, id int, codigo int) error {
+	_, err := tR.pool.Exec(ctx, model.MUDAR_NOME_TAR, id, codigo)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tR *TaskRepository) MudarPrazoTarefa(ctx context.Context, id int, codigo int) error {
+	_, err := tR.pool.Exec(ctx, model.MUDAR_PRAZ_TAR, id, codigo)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tR *TaskRepository) MudarAnotacaoTarefa(ctx context.Context, id int, codigo int) error {
+	_, err := tR.pool.Exec(ctx, model.MUDAR_ANOT_TAR, id, codigo)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // DELETE
 
 func (tR *TaskRepository) DeletarUsuario(ctx context.Context, matricula int) error {
 	_, err := tR.pool.Exec(ctx, model.DELETAR_USUARIO, matricula)
 	if err != nil {
+		fmt.Println(err, "aqui")
 		return err
 	}
 
@@ -212,7 +261,7 @@ func (tR *TaskRepository) DeletarMateria(ctx context.Context, matricula int, cod
 }
 
 func (tR *TaskRepository) DeletarTarefa(ctx context.Context, codigo int, id int) error {
-	_, err := tR.pool.Exec(ctx, model.DELETAR_MATERIA, codigo, id)
+	_, err := tR.pool.Exec(ctx, model.DELETAR_TAREFA, codigo, id)
 	if err != nil {
 		return err
 	}

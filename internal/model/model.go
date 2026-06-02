@@ -17,7 +17,7 @@ const (
 
 	LER_USUARIO     = "SELECT matricula, email, senha_hash, tema FROM usuario WHERE matricula = $1;"
 	LISTAR_MATERIAS = "SELECT codigo, nome, m.matricula FROM materia m INNER JOIN usuario u ON m.matricula = u.matricula AND u.matricula = $1;" //materias de um usuario
-	LER_MATERIA     = "SELECT codigo, m.nome, u.matricula FROM materia m INNER JOIN usuario u ON u.matricula = $1 AND id = $2;"
+	LER_MATERIA     = "SELECT codigo, m.nome, u.matricula FROM materia m INNER JOIN usuario u ON u.matricula = $1 AND codigo = $2;"
 	LISTAR_TAREFAS  = "SELECT id, t.nome, prazo, anotacao, t.codigo FROM tarefa t INNER JOIN materia m ON t.codigo = m.codigo AND m.codigo = $1;" // tarefas em uma matéria
 	LER_TAREFA      = "SELECT id, t.nome, anotacao, prazo, t.codigo FROM tarefa t INNER JOIN materia m ON m.codigo = $1 AND id = $2;"
 

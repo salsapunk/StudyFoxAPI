@@ -164,7 +164,7 @@ func (tS *TaskService) DeletarTarefa(ctx context.Context, codigo int, id int) er
 		return fmt.Errorf("erro ao buscar matéria %d: %w", id, err)
 	}
 
-	err = tS.repository.DeletarMateria(ctx, codigo, id)
+	err = tS.repository.DeletarTarefa(ctx, codigo, id)
 	if err != nil {
 		return fmt.Errorf("erro ao deletar usuário %d: %w", id, err)
 	}
