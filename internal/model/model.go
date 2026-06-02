@@ -21,6 +21,13 @@ const (
 	LISTAR_TAREFAS  = "SELECT id, t.nome, prazo, anotacao, t.codigo FROM tarefa t INNER JOIN materia m ON t.codigo = m.codigo AND m.codigo = $1;" // tarefas em uma matéria
 	LER_TAREFA      = "SELECT id, t.nome, anotacao, prazo, t.codigo FROM tarefa t INNER JOIN materia m ON m.codigo = $1 AND id = $2;"
 
+	MUDAR_SENHA_USR = "UPDATE TABLE usuario SET senha_hash = $1 WHERE matricula = $2"
+	MUDAR_EMAIL_USR = "UPDATE TABLE usuario SET email = $1 WHERE matricula = $2"
+	MUDAR_NOME_MAT  = "UPDATE TABLE materia SET nome = $1 WHERE matricula = $2"
+	MUDAR_NOME_TAR  = "UPDATE TABLE tarefa SET nome = $1 WHERE codigo = $2"
+	MUDAR_PRAZ_TAR  = "UPDATE TABLE tarefa SET prazo = $1 WHERE codigo = $2"
+	MUDAR_ANOT_TAR  = "UPDATE TABLE tarefa SET anotacao = $1 WHERE codigo = $2"
+
 	DELETAR_USUARIO = "DELETE FROM usuario WHERE matricula = $1"
 	DELETAR_MATERIA = "DELETE FROM materia WHERE matricula = $1 AND codigo = $2"
 	DELETAR_TAREFA  = "DELETE FROM tarefa WHERE codigo = $1 AND id = $2"
