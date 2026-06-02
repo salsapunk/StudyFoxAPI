@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/salsapunk/StudyFoxAPI/internal/model"
@@ -67,6 +69,7 @@ func (tS *TaskService) CriarTarefa(ctx context.Context, tarefa *model.Tarefa) (i
 }
 
 // READ
+
 func (tS *TaskService) LerUsuario(ctx context.Context, matricula int) (model.Usuario, error) {
 	usuario, err := tS.repository.LerUsuario(ctx, matricula)
 	if err != nil {
@@ -85,6 +88,15 @@ func (tS *TaskService) ListarMaterias(ctx context.Context, matricula int) ([]mod
 	return materias, nil
 }
 
+func (tS *TaskService) LerMateria(ctx context.Context, matricula int, codigo int) (model.Materia, error) {
+	materia, err := tS.repository.LerMateria(ctx, matricula, codigo)
+	if err != nil {
+		return materia, err
+	}
+
+	return materia, nil
+}
+
 func (tS *TaskService) ListarTarefas(ctx context.Context, codigo int) ([]model.Tarefa, error) {
 	tarefas, err := tS.repository.ListarTarefas(ctx, codigo)
 	if err != nil {
@@ -94,11 +106,68 @@ func (tS *TaskService) ListarTarefas(ctx context.Context, codigo int) ([]model.T
 	return tarefas, nil
 }
 
-func (tS *TaskService) LerTarefa(ctx context.Context, id int) (model.Tarefa, error) {
-	tarefa, err := tS.repository.LerTarefa(ctx, id)
+func (tS *TaskService) LerTarefa(ctx context.Context, codigo int, id int) (model.Tarefa, error) {
+	tarefa, err := tS.repository.LerTarefa(ctx, codigo, id)
 	if err != nil {
 		return tarefa, err
 	}
 
 	return tarefa, nil
+}
+
+// UPDATE
+
+// ...
+
+// DELETE
+
+func (tS *TaskService) DeletarUsuario(ctx context.Context, matricula int) error {
+	_, err := tS.repository.LerUsuario(ctx, matricula)
+	if err != nil {
+		if errors.Is(err, model.ErrUsuarioNotFound) {
+			return model.ErrUsuarioNotFound
+		}
+		return fmt.Errorf("erro ao buscar usuário %d: %w", matricula, err)
+	}
+
+	err = tS.repository.DeletarUsuario(ctx, matricula)
+	if err != nil {
+		return fmt.Errorf("erro ao deletar usuário %d: %w", matricula, err)
+	}
+
+	return nil
+}
+
+func (tS *TaskService) DeletarMateria(ctx context.Context, matricula int, codigo int) error {
+	_, err := tS.repository.LerMateria(ctx, matricula, codigo)
+	if err != nil {
+		if errors.Is(err, model.ErrMateriaNotFound) {
+			return model.ErrMateriaNotFound
+		}
+		return fmt.Errorf("erro ao buscar matéria %d: %w", codigo, err)
+	}
+
+	err = tS.repository.DeletarMateria(ctx, matricula, codigo)
+	if err != nil {
+		return fmt.Errorf("erro ao deletar usuário %d: %w", codigo, err)
+	}
+
+	return nil
+}
+
+func (tS *TaskService) DeletarTarefa(ctx context.Context, codigo int, id int) error {
+	_, err := tS.repository.LerTarefa(ctx, codigo, id)
+	if err != nil {
+		if errors.Is(err, model.ErrTarefaNotFound) {
+			return model.ErrTarefaNotFound
+		}
+		return fmt.Errorf("erro ao buscar matéria %d: %w", id, err)
+	}
+
+	err = tS.repository.DeletarMateria(ctx, codigo, id)
+	if err != nil {
+		return fmt.Errorf("erro ao deletar usuário %d: %w", id, err)
+	}
+
+	return nil
 }

@@ -120,6 +120,23 @@ func (tR *TaskRepository) ListarMaterias(ctx context.Context, matricula int) ([]
 	return materias, nil
 }
 
+func (tR *TaskRepository) LerMateria(ctx context.Context, matricula int, codigo int) (model.Materia, error) {
+	row := tR.pool.QueryRow(ctx, model.LER_MATERIA, matricula, codigo)
+
+	var materia model.Materia
+
+	err := row.Scan(
+		&materia.Codigo,
+		&materia.Nome,
+		&materia.Matricula,
+	)
+	if err != nil {
+		return model.Materia{}, err
+	}
+
+	return materia, nil
+}
+
 func (tR *TaskRepository) ListarTarefas(ctx context.Context, codigo int) ([]model.Tarefa, error) {
 	rows, err := tR.pool.Query(ctx, model.LISTAR_TAREFAS, codigo)
 	if err != nil {
@@ -151,8 +168,8 @@ func (tR *TaskRepository) ListarTarefas(ctx context.Context, codigo int) ([]mode
 	return tarefas, nil
 }
 
-func (tR *TaskRepository) LerTarefa(ctx context.Context, id int) (model.Tarefa, error) {
-	row := tR.pool.QueryRow(ctx, model.LER_TAREFA, id)
+func (tR *TaskRepository) LerTarefa(ctx context.Context, codigo int, id int) (model.Tarefa, error) {
+	row := tR.pool.QueryRow(ctx, model.LER_TAREFA, codigo, id)
 
 	var tarefa model.Tarefa
 
@@ -168,4 +185,37 @@ func (tR *TaskRepository) LerTarefa(ctx context.Context, id int) (model.Tarefa, 
 	}
 
 	return tarefa, nil
+}
+
+// UPDATE
+
+// ...
+
+// DELETE
+
+func (tR *TaskRepository) DeletarUsuario(ctx context.Context, matricula int) error {
+	_, err := tR.pool.Exec(ctx, model.DELETAR_USUARIO, matricula)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (tR *TaskRepository) DeletarMateria(ctx context.Context, matricula int, codigo int) error {
+	_, err := tR.pool.Exec(ctx, model.DELETAR_MATERIA, matricula, codigo)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (tR *TaskRepository) DeletarTarefa(ctx context.Context, codigo int, id int) error {
+	_, err := tR.pool.Exec(ctx, model.DELETAR_MATERIA, codigo, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

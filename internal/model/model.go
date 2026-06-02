@@ -1,6 +1,8 @@
 package model
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -9,13 +11,31 @@ import (
 )
 
 const (
-	CRIAR_USUARIO   = "INSERT INTO usuario(email, senha_hash) VALUES($1, $2) RETURNING matricula;"
-	CRIAR_MATERIA   = "INSERT INTO materia(nome, matricula) VALUES($1, $2) RETURNING codigo;"
-	CRIAR_TAREFA    = "INSERT INTO tarefa(nome, anotacao, prazo, codigo) VALUES($1, $2, $3, $4) RETURNING id;"
+	CRIAR_USUARIO = "INSERT INTO usuario(email, senha_hash) VALUES($1, $2) RETURNING matricula;"
+	CRIAR_MATERIA = "INSERT INTO materia(nome, matricula) VALUES($1, $2) RETURNING codigo;"
+	CRIAR_TAREFA  = "INSERT INTO tarefa(nome, anotacao, prazo, codigo) VALUES($1, $2, $3, $4) RETURNING id;"
+
 	LER_USUARIO     = "SELECT matricula, email, senha_hash, tema FROM usuario WHERE matricula = $1;"
-	LISTAR_MATERIAS = "SELECT codigo, nome, m.matricula FROM materia m INNER JOIN usuario u ON m.matricula = u.matricula AND u.matricula = $1;"   //materias de um usuario
+	LISTAR_MATERIAS = "SELECT codigo, nome, m.matricula FROM materia m INNER JOIN usuario u ON m.matricula = u.matricula AND u.matricula = $1;" //materias de um usuario
+	LER_MATERIA     = "SELECT codigo, m.nome, u.matricula FROM materia m INNER JOIN usuario u ON u.matricula = $1 AND id = $2;"
 	LISTAR_TAREFAS  = "SELECT id, t.nome, prazo, anotacao, t.codigo FROM tarefa t INNER JOIN materia m ON t.codigo = m.codigo AND m.codigo = $1;" // tarefas em uma matéria
-	LER_TAREFA      = "SELECT id, t.nome, anotacao, prazo, t.codigo FROM tarefa t INNER JOIN materia m ON t.codigo = m.codigo AND id = $1;"
+	LER_TAREFA      = "SELECT id, t.nome, anotacao, prazo, t.codigo FROM tarefa t INNER JOIN materia m ON m.codigo = $1 AND id = $2;"
+
+	DELETAR_USUARIO = "DELETE FROM usuario WHERE matricula = $1"
+	DELETAR_MATERIA = "DELETE FROM materia WHERE matricula = $1 AND codigo = $2"
+	DELETAR_TAREFA  = "DELETE FROM tarefa WHERE codigo = $1 AND id = $2"
+)
+
+func ErrNotFound(fragmento string) error {
+	err := fmt.Sprintf("%s não encontrado", fragmento)
+	Err := errors.New(err)
+	return Err
+}
+
+var (
+	ErrUsuarioNotFound = ErrNotFound("Usuário")
+	ErrMateriaNotFound = ErrNotFound("Matéria")
+	ErrTarefaNotFound  = ErrNotFound("Tarefa")
 )
 
 // Responses

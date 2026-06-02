@@ -44,16 +44,19 @@ func main() {
 	router.GET("/api/v1/ping", taskHandler.CheckHealth)
 	router.GET("/api/v1/usuario/:matricula", taskHandler.LerUsuario)
 	router.GET("/api/v1/usuario/:matricula/materias", taskHandler.ListarMaterias)
+	router.GET("/api/v1/usuario/:matricula/materia/:codigo", taskHandler.LerMateria)
 	router.GET("/api/v1/materia/:codigo/tarefas", taskHandler.ListarTarefas)
 	router.GET("/api/v1/materia/:codigo/tarefa/:id", taskHandler.LerTarefa)
 
 	// UPDATE
-	// ?
+	// router.PUT("/api/v1/usuario/:matricula", taskHandler.MudarUsuario)
+	// router.PUT("/api/v1/usuario/:matricula/materia/:codigo", taskHandler.MudarMateria)
+	// router.PUT("/api/v1/materia/:codigo/tarefa/:id", taskHandler.MudarTarefa)
 
 	// DELETE
-	// router.DELETE("/api/v1/usuario/:matricula", taskHandler.DeletarUsuario)
-	// router.DELETE("/api/v1/usuario/:matricula/materia/:codigo", taskHandler.DeletarMateria)
-	// router.DELETE("/api/v1/usuario/:matricula/materia/:codigo/tarefa/:id", taskHandler.DeletarTarefa)
+	router.DELETE("/api/v1/usuario/:matricula", taskHandler.DeletarUsuario)
+	router.DELETE("/api/v1/usuario/:matricula/materia/:codigo", taskHandler.DeletarMateria)
+	router.DELETE("/api/v1/usuario/:matricula/materia/:codigo/tarefa/:id", taskHandler.DeletarTarefa)
 
 	router.Run(":8080")
 }

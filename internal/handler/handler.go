@@ -145,6 +145,25 @@ func (tH *TaskHandler) ListarMaterias(c *gin.Context) {
 	model.OK(c, materias)
 }
 
+func (tH *TaskHandler) LerMateria(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	param := c.Param("matricula")
+	matricula, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, http.StatusBadRequest, err)
+		return
+	}
+
+	usuario, err := tH.service.LerUsuario(ctx, matricula)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 400, err)
+		return
+	}
+
+	model.OK(c, usuario)
+}
+
 func (tH *TaskHandler) ListarTarefas(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -167,18 +186,102 @@ func (tH *TaskHandler) ListarTarefas(c *gin.Context) {
 func (tH *TaskHandler) LerTarefa(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	param := c.Param("id")
+	param := c.Param("codigo")
+	codigo, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 399, err)
+		return
+	}
+
+	param = c.Param("id")
 	id, err := strconv.Atoi(param)
 	if err != nil {
 		model.Fail(c, http.StatusBadGateway, 399, err)
 		return
 	}
 
-	tarefa, err := tH.service.LerTarefa(ctx, id)
+	tarefa, err := tH.service.LerTarefa(ctx, codigo, id)
 	if err != nil {
 		model.Fail(c, http.StatusBadGateway, 400, err)
 		return
 	}
 
 	model.OK(c, tarefa)
+}
+
+// UPDATE
+
+// ...
+
+// DELETE
+
+func (tH *TaskHandler) DeletarUsuario(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	param := c.Param("matricula")
+	matricula, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, 400, err)
+		return
+	}
+
+	err = tH.service.DeletarUsuario(ctx, matricula)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, 400, err)
+		return
+	}
+
+	model.OK(c, "Usuário deletado")
+}
+
+func (tH *TaskHandler) DeletarMateria(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	param := c.Param("matricula")
+	matricula, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, 400, err)
+		return
+	}
+
+	param = c.Param("codigo")
+	codigo, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, 400, err)
+		return
+	}
+
+	err = tH.service.DeletarMateria(ctx, matricula, codigo)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, 400, err)
+		return
+	}
+
+	model.OK(c, "Matéria deletada")
+}
+
+func (tH *TaskHandler) DeletarTarefa(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	param := c.Param("codigo")
+	codigo, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, 400, err)
+		return
+	}
+
+	param = c.Param("id")
+	id, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, 400, err)
+		return
+	}
+
+	err = tH.service.DeletarMateria(ctx, codigo, id)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, 400, err)
+		return
+	}
+
+	model.OK(c, "Tarefa deletada")
 }
