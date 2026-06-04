@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/salsapunk/StudyFoxAPI/internal/model"
@@ -25,7 +26,7 @@ func (tS *TaskService) CriarUsuario(ctx context.Context, usuario *model.Usuario)
 
 	err := validate.Struct(usuario)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("erro ao validar usuário: %w", err)
 	}
 
 	matricula, err := tS.repository.CriarUsuario(ctx, usuario)
@@ -117,7 +118,108 @@ func (tS *TaskService) LerTarefa(ctx context.Context, codigo int, id int) (model
 
 // UPDATE
 
-// ...
+func (tS *TaskService) MudarEmail(ctx context.Context, email string, matricula int) error {
+	_, err := tS.repository.LerUsuario(ctx, matricula)
+	if err != nil {
+		fmt.Println("nao tem")
+		if errors.Is(err, model.ErrUsuarioNotFound) {
+			return model.ErrUsuarioNotFound
+		}
+		return fmt.Errorf("erro ao buscar usuário %d: %w", matricula, err)
+	}
+
+	err = tS.repository.MudarEmail(ctx, email, matricula)
+	if err != nil {
+		return fmt.Errorf("erro ao atualizar email do usuário %d: %w", matricula, err)
+	}
+
+	return nil
+}
+
+func (tS *TaskService) MudarSenha(ctx context.Context, senha_hash string, matricula int) error {
+	_, err := tS.repository.LerUsuario(ctx, matricula)
+	if err != nil {
+		if errors.Is(err, model.ErrUsuarioNotFound) {
+			return model.ErrUsuarioNotFound
+		}
+		return fmt.Errorf("erro ao buscar usuário %d: %w", matricula, err)
+	}
+
+	err = tS.repository.MudarSenha(ctx, senha_hash, matricula)
+	if err != nil {
+		return fmt.Errorf("erro ao atualizar senha do usuário %d: %w", matricula, err)
+	}
+
+	return nil
+}
+
+func (tS *TaskService) MudarNomeMateria(ctx context.Context, nome string, matricula int, codigo int) error {
+	_, err := tS.repository.LerMateria(ctx, matricula, codigo)
+	if err != nil {
+		if errors.Is(err, model.ErrMateriaNotFound) {
+			return model.ErrMateriaNotFound
+		}
+		return fmt.Errorf("erro ao buscar matéria %d: %w", codigo, err)
+	}
+
+	err = tS.repository.MudarNomeMateria(ctx, nome, matricula, codigo)
+	if err != nil {
+		return fmt.Errorf("erro ao atualizar nome da matéria %d: %w", codigo, err)
+	}
+
+	return nil
+}
+
+func (tS *TaskService) MudarNomeTarefa(ctx context.Context, nome string, codigo int, id int) error {
+	_, err := tS.repository.LerTarefa(ctx, codigo, id)
+	if err != nil {
+		if errors.Is(err, model.ErrTarefaNotFound) {
+			return model.ErrTarefaNotFound
+		}
+		return fmt.Errorf("erro ao buscar tarefa %d: %w", id, err)
+	}
+
+	err = tS.repository.MudarNomeTarefa(ctx, nome, codigo, id)
+	if err != nil {
+		return fmt.Errorf("erro ao atualizar nome da tarefa %d: %w", id, err)
+	}
+
+	return nil
+}
+
+func (tS *TaskService) MudarPrazoTarefa(ctx context.Context, prazo time.Time, codigo int, id int) error {
+	_, err := tS.repository.LerTarefa(ctx, codigo, id)
+	if err != nil {
+		if errors.Is(err, model.ErrTarefaNotFound) {
+			return model.ErrTarefaNotFound
+		}
+		return fmt.Errorf("erro ao buscar tarefa %d: %w", id, err)
+	}
+
+	err = tS.repository.MudarPrazoTarefa(ctx, prazo, codigo, id)
+	if err != nil {
+		return fmt.Errorf("erro ao atualizar prazo da tarefa %d: %w", id, err)
+	}
+
+	return nil
+}
+
+func (tS *TaskService) MudarAnotacaoTarefa(ctx context.Context, anotacao string, codigo int, id int) error {
+	_, err := tS.repository.LerTarefa(ctx, codigo, id)
+	if err != nil {
+		if errors.Is(err, model.ErrTarefaNotFound) {
+			return model.ErrTarefaNotFound
+		}
+		return fmt.Errorf("erro ao buscar tarefa %d: %w", id, err)
+	}
+
+	err = tS.repository.MudarAnotacaoTarefa(ctx, anotacao, codigo, id)
+	if err != nil {
+		return fmt.Errorf("erro ao atualizar anotacao da tarefa %d: %w", id, err)
+	}
+
+	return nil
+}
 
 // DELETE
 
