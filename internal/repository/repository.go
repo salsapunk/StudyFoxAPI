@@ -3,8 +3,9 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/salsapunk/StudyFoxAPI/internal/model"
 )
@@ -22,11 +23,9 @@ func NewTaskRepo(pool *pgxpool.Pool) *TaskRepository {
 // CREATE
 
 func (tR *TaskRepository) CriarUsuario(ctx context.Context, usuario *model.Usuario) (int, error) {
-	fmt.Println(usuario)
-
 	row := tR.pool.QueryRow(ctx, model.CRIAR_USUARIO,
 		&usuario.Email,
-		&usuario.Senha_hash,
+		&usuario.Senha,
 	)
 
 	var matricula int
@@ -76,15 +75,24 @@ func (tR *TaskRepository) CriarTarefa(ctx context.Context, tarefa *model.Tarefa)
 
 // READ
 
-func (tR *TaskRepository) LerUsuario(ctx context.Context, matricula int) (model.Usuario, error) {
-	row := tR.pool.QueryRow(ctx, model.LER_USUARIO, matricula)
+func (tR *TaskRepository) LerUsuario(ctx context.Context, data any) (model.Usuario, error) {
+	var row pgx.Row
+
+	switch data.(type) {
+	case int:
+		row = tR.pool.QueryRow(ctx, model.LER_USUARIO_MATRI, data)
+	case string:
+		row = tR.pool.QueryRow(ctx, model.LER_USUARIO_EMAIL, data)
+	default:
+		return model.Usuario{}, fmt.Errorf("erro na data passada")
+	}
 
 	var usuario model.Usuario
 
 	err := row.Scan(
 		&usuario.Matricula,
 		&usuario.Email,
-		&usuario.Senha_hash,
+		&usuario.Senha,
 		&usuario.Tema,
 	)
 	if err != nil {
@@ -157,6 +165,7 @@ func (tR *TaskRepository) ListarTarefas(ctx context.Context, codigo int) ([]mode
 			&tarefa.Anotacao,
 			&tarefa.Prazo,
 			&tarefa.Codigo,
+			&tarefa.Status,
 		)
 		if err != nil {
 			fmt.Println(err)
@@ -182,6 +191,7 @@ func (tR *TaskRepository) LerTarefa(ctx context.Context, codigo int, id int) (mo
 		&tarefa.Anotacao,
 		&tarefa.Prazo,
 		&tarefa.Codigo,
+		&tarefa.Status,
 	)
 	if err != nil {
 		return model.Tarefa{}, err
@@ -201,8 +211,17 @@ func (tR *TaskRepository) MudarEmail(ctx context.Context, email string, matricul
 	return nil
 }
 
-func (tR *TaskRepository) MudarSenha(ctx context.Context, senha_hash string, matricula int) error {
-	_, err := tR.pool.Exec(ctx, model.MUDAR_SENHA_USR, senha_hash, matricula)
+func (tR *TaskRepository) MudarSenha(ctx context.Context, senha string, matricula int) error {
+	_, err := tR.pool.Exec(ctx, model.MUDAR_SENHA_USR, senha, matricula)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (tR *TaskRepository) MudarTema(ctx context.Context, tema string, matricula int) error {
+	_, err := tR.pool.Exec(ctx, model.MUDAR_TEMA_USR, tema, matricula)
 	if err != nil {
 		return err
 	}
@@ -226,7 +245,7 @@ func (tR *TaskRepository) MudarNomeTarefa(ctx context.Context, nome string, id i
 	return nil
 }
 
-func (tR *TaskRepository) MudarPrazoTarefa(ctx context.Context, prazo time.Time, codigo int, id int) error {
+func (tR *TaskRepository) MudarPrazoTarefa(ctx context.Context, prazo pgtype.Date, codigo int, id int) error {
 	_, err := tR.pool.Exec(ctx, model.MUDAR_PRAZ_TAR, prazo, codigo, id)
 	if err != nil {
 		return err
@@ -236,6 +255,14 @@ func (tR *TaskRepository) MudarPrazoTarefa(ctx context.Context, prazo time.Time,
 
 func (tR *TaskRepository) MudarAnotacaoTarefa(ctx context.Context, anotacao string, codigo int, id int) error {
 	_, err := tR.pool.Exec(ctx, model.MUDAR_ANOT_TAR, anotacao, codigo, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tR *TaskRepository) MudarStatusTarefa(ctx context.Context, status int, codigo int, id int) error {
+	_, err := tR.pool.Exec(ctx, model.MUDAR_STAT_TAR, status, codigo, id)
 	if err != nil {
 		return err
 	}

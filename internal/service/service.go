@@ -4,27 +4,27 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/salsapunk/StudyFoxAPI/internal/model"
 	"github.com/salsapunk/StudyFoxAPI/internal/repository"
 )
 
 type TaskService struct {
 	repository *repository.TaskRepository
+	validate   *validator.Validate
 }
 
 func NewTaskServ(TaskRepo *repository.TaskRepository) *TaskService {
 	return &TaskService{
 		repository: TaskRepo,
+		validate:   validator.New(),
 	}
 }
 
 func (tS *TaskService) CriarUsuario(ctx context.Context, usuario *model.Usuario) (int, error) {
-	validate := validator.New()
-
-	err := validate.Struct(usuario)
+	err := tS.validate.Struct(usuario)
 	if err != nil {
 		return 0, fmt.Errorf("erro ao validar usuário: %w", err)
 	}
@@ -38,9 +38,7 @@ func (tS *TaskService) CriarUsuario(ctx context.Context, usuario *model.Usuario)
 }
 
 func (tS *TaskService) CriarMateria(ctx context.Context, materia *model.Materia) (int, error) {
-	validate := validator.New()
-
-	err := validate.Struct(materia)
+	err := tS.validate.Struct(materia)
 	if err != nil {
 		return 0, err
 	}
@@ -54,9 +52,7 @@ func (tS *TaskService) CriarMateria(ctx context.Context, materia *model.Materia)
 }
 
 func (tS *TaskService) CriarTarefa(ctx context.Context, tarefa *model.Tarefa) (int, error) {
-	validate := validator.New()
-
-	err := validate.Struct(tarefa)
+	err := tS.validate.Struct(tarefa)
 	if err != nil {
 		return 0, err
 	}
@@ -71,8 +67,8 @@ func (tS *TaskService) CriarTarefa(ctx context.Context, tarefa *model.Tarefa) (i
 
 // READ
 
-func (tS *TaskService) LerUsuario(ctx context.Context, matricula int) (model.Usuario, error) {
-	usuario, err := tS.repository.LerUsuario(ctx, matricula)
+func (tS *TaskService) LerUsuario(ctx context.Context, data any) (model.Usuario, error) {
+	usuario, err := tS.repository.LerUsuario(ctx, data)
 	if err != nil {
 		return usuario, err
 	}
@@ -136,7 +132,7 @@ func (tS *TaskService) MudarEmail(ctx context.Context, email string, matricula i
 	return nil
 }
 
-func (tS *TaskService) MudarSenha(ctx context.Context, senha_hash string, matricula int) error {
+func (tS *TaskService) MudarSenha(ctx context.Context, senha string, matricula int) error {
 	_, err := tS.repository.LerUsuario(ctx, matricula)
 	if err != nil {
 		if errors.Is(err, model.ErrUsuarioNotFound) {
@@ -145,9 +141,26 @@ func (tS *TaskService) MudarSenha(ctx context.Context, senha_hash string, matric
 		return fmt.Errorf("erro ao buscar usuário %d: %w", matricula, err)
 	}
 
-	err = tS.repository.MudarSenha(ctx, senha_hash, matricula)
+	err = tS.repository.MudarSenha(ctx, senha, matricula)
 	if err != nil {
 		return fmt.Errorf("erro ao atualizar senha do usuário %d: %w", matricula, err)
+	}
+
+	return nil
+}
+
+func (tS *TaskService) MudarTema(ctx context.Context, tema string, matricula int) error {
+	_, err := tS.repository.LerUsuario(ctx, matricula)
+	if err != nil {
+		if errors.Is(err, model.ErrUsuarioNotFound) {
+			return model.ErrUsuarioNotFound
+		}
+		return fmt.Errorf("erro ao buscar usuário %d: %w", matricula, err)
+	}
+
+	err = tS.repository.MudarTema(ctx, tema, matricula)
+	if err != nil {
+		return fmt.Errorf("erro ao atualizar tema do usuário %d: %w", matricula, err)
 	}
 
 	return nil
@@ -187,7 +200,7 @@ func (tS *TaskService) MudarNomeTarefa(ctx context.Context, nome string, codigo 
 	return nil
 }
 
-func (tS *TaskService) MudarPrazoTarefa(ctx context.Context, prazo time.Time, codigo int, id int) error {
+func (tS *TaskService) MudarPrazoTarefa(ctx context.Context, prazo pgtype.Date, codigo int, id int) error {
 	_, err := tS.repository.LerTarefa(ctx, codigo, id)
 	if err != nil {
 		if errors.Is(err, model.ErrTarefaNotFound) {
@@ -221,6 +234,23 @@ func (tS *TaskService) MudarAnotacaoTarefa(ctx context.Context, anotacao string,
 	return nil
 }
 
+func (tS *TaskService) MudarStatusTarefa(ctx context.Context, status int, codigo int, id int) error {
+	_, err := tS.repository.LerTarefa(ctx, codigo, id)
+	if err != nil {
+		if errors.Is(err, model.ErrTarefaNotFound) {
+			return model.ErrTarefaNotFound
+		}
+		return fmt.Errorf("erro ao buscar tarefa %d: %w", id, err)
+	}
+
+	err = tS.repository.MudarStatusTarefa(ctx, status, codigo, id)
+	if err != nil {
+		return fmt.Errorf("erro ao atualizar status da tarefa %d: %w", id, err)
+	}
+
+	return nil
+}
+
 // DELETE
 
 func (tS *TaskService) DeletarUsuario(ctx context.Context, matricula int) error {
@@ -242,6 +272,7 @@ func (tS *TaskService) DeletarUsuario(ctx context.Context, matricula int) error 
 
 func (tS *TaskService) DeletarMateria(ctx context.Context, matricula int, codigo int) error {
 	_, err := tS.repository.LerMateria(ctx, matricula, codigo)
+
 	if err != nil {
 		if errors.Is(err, model.ErrMateriaNotFound) {
 			return model.ErrMateriaNotFound

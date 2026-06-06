@@ -3,12 +3,17 @@ package handler
 // arrumar os códigos dos erros
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/salsapunk/StudyFoxAPI/internal/model"
 	"github.com/salsapunk/StudyFoxAPI/internal/service"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type TaskHandler struct {
@@ -27,16 +32,74 @@ func (tH *TaskHandler) CheckHealth(c *gin.Context) {
 	})
 }
 
-func (tH *TaskHandler) CriarUsuario(c *gin.Context) {
+func (tH *TaskHandler) Validate(c *gin.Context) {
+	usuario, _ := c.Get("usuario")
+
+	model.OK(c, usuario)
+}
+
+func (tH *TaskHandler) RequireAuth(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	var usuario model.Usuario
-
-	err := c.ShouldBindJSON(&usuario)
+	tokenString, err := c.Cookie("Authorization")
 	if err != nil {
-		model.Fail(c, http.StatusBadRequest, 1, err)
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		return []byte(os.Getenv("SECRET")), nil
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
+	if err != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		if float64(time.Now().Unix()) > claims["exp"].(float64) {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		v, ok := claims["sub"].(float64)
+		if !ok {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		matricula := int(v)
+
+		usuario, err := tH.service.LerUsuario(ctx, matricula)
+		if err != nil || usuario.Matricula == 0 {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		c.Set("usuario", usuario)
+		c.Next()
+	} else {
+		fmt.Println(err)
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+}
+
+func (tH *TaskHandler) SingUp(c *gin.Context) {
+	ctx := c.Request.Context()
+	var usuario model.Usuario
+
+	if err := c.ShouldBindJSON(&usuario); err != nil {
+		model.Fail(c, http.StatusBadRequest, 0, err)
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(usuario.Senha), 10)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, 0, err)
+		return
+	}
+
+	usuario.Senha = string(hash)
 
 	id, err := tH.service.CriarUsuario(ctx, &usuario)
 	if err != nil {
@@ -45,6 +108,47 @@ func (tH *TaskHandler) CriarUsuario(c *gin.Context) {
 	}
 
 	model.OK(c, id)
+}
+
+func (tH *TaskHandler) Login(c *gin.Context) {
+	ctx := c.Request.Context()
+	var usuario model.Usuario
+
+	if err := c.ShouldBindJSON(&usuario); err != nil {
+		fmt.Println("ler json")
+		model.Fail(c, http.StatusBadRequest, 0, err)
+		return
+	}
+
+	var usuarioDB model.Usuario
+	usuarioDB, err := tH.service.LerUsuario(ctx, usuario.Email)
+	if err != nil {
+		fmt.Println("ler user")
+		model.Fail(c, http.StatusBadRequest, 0, err)
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(usuarioDB.Senha), []byte(usuario.Senha_hash))
+	if err != nil {
+		fmt.Println("hash")
+		model.Fail(c, http.StatusBadRequest, 0, err)
+		return
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": usuarioDB.Matricula,
+		"exp": time.Now().Add(time.Hour * 24 * 30).Unix(),
+	})
+
+	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET")))
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 0, err)
+		return
+	}
+
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("Authorization", tokenString, 3600*24*30, "", "", true, true)
+	model.OK(c, "Login executed successfully")
 }
 
 func (tH *TaskHandler) CriarMateria(c *gin.Context) {
@@ -210,7 +314,6 @@ func (tH *TaskHandler) LerTarefa(c *gin.Context) {
 		model.Fail(c, http.StatusBadGateway, 16, err)
 		return
 	}
-
 	model.OK(c, tarefa)
 }
 
@@ -240,7 +343,6 @@ func (tH *TaskHandler) MudarEmail(c *gin.Context) {
 	}
 
 	model.OK(c, "Email do usuário atualizado")
-
 }
 
 func (tH *TaskHandler) MudarSenha(c *gin.Context) {
@@ -260,14 +362,39 @@ func (tH *TaskHandler) MudarSenha(c *gin.Context) {
 		return
 	}
 
-	err = tH.service.MudarSenha(ctx, usuario.Senha_hash, matricula)
+	err = tH.service.MudarSenha(ctx, usuario.Senha, matricula)
 	if err != nil {
 		model.Fail(c, http.StatusBadGateway, 22, err)
 		return
 	}
 
 	model.OK(c, "Senha do usuário atualizada")
+}
 
+func (tH *TaskHandler) MudarTema(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	param := c.Param("matricula")
+	matricula, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 0, err)
+		return
+	}
+
+	var usuario model.Usuario
+	err = c.ShouldBindJSON(&usuario)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 0, err)
+		return
+	}
+
+	err = tH.service.MudarTema(ctx, usuario.Tema, matricula)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 0, err)
+		return
+	}
+
+	model.OK(c, "Tema do usuário atualizada")
 }
 
 func (tH *TaskHandler) MudarNomeMateria(c *gin.Context) {
@@ -280,7 +407,7 @@ func (tH *TaskHandler) MudarNomeMateria(c *gin.Context) {
 		return
 	}
 
-	param = c.Param("matricula")
+	param = c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
 		model.Fail(c, http.StatusBadGateway, 24, err)
@@ -400,6 +527,39 @@ func (tH *TaskHandler) MudarAnotacaoTarefa(c *gin.Context) {
 	}
 
 	model.OK(c, "Anotação da tarefa atualizada")
+}
+
+func (tH *TaskHandler) MudarStatusTarefa(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	param := c.Param("codigo")
+	codigo, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 0, err)
+		return
+	}
+
+	param = c.Param("id")
+	id, err := strconv.Atoi(param)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 0, err)
+		return
+	}
+
+	var tarefa model.Tarefa
+	err = c.ShouldBindJSON(&tarefa)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 0, err)
+		return
+	}
+
+	err = tH.service.MudarStatusTarefa(ctx, tarefa.Status, codigo, id)
+	if err != nil {
+		model.Fail(c, http.StatusBadGateway, 0, err)
+		return
+	}
+
+	model.OK(c, "Status da tarefa atualizada")
 }
 
 // DELETE
