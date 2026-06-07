@@ -14,13 +14,6 @@ import (
 	"github.com/salsapunk/StudyFoxAPI/internal/service"
 )
 
-func init() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-}
-
 func initPool() *pgxpool.Pool {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
