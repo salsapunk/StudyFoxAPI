@@ -76,5 +76,6 @@ func main() {
 	router.DELETE("/api/v1/materia/:codigo", taskHandler.RequireAuth, taskHandler.DeletarMateria)
 	router.DELETE("/api/v1/materia/:codigo/tarefa/:id", taskHandler.RequireAuth, taskHandler.DeletarTarefa)
 
-	router.Run(os.Getenv("PORT"))
+	port := os.Getenv("PORT")
+	router.Run(":" + "port")
 }
