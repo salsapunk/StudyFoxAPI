@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
 	"github.com/labstack/gommon/log"
 	"github.com/salsapunk/StudyFoxAPI/internal/handler"
 	"github.com/salsapunk/StudyFoxAPI/internal/repository"
