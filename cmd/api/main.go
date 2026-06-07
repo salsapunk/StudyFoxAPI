@@ -37,6 +37,23 @@ func initPool() *pgxpool.Pool {
 	return pool
 }
 
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Header("Access-Control-Allow-Credentials", "true")
+ 
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+ 
+		c.Next()
+	}
+}
+
+
 func main() {
 	pool := initPool()
 
@@ -46,6 +63,7 @@ func main() {
 
 	router := gin.Default()
 	router.SetTrustedProxies([]string{"192.186.0.10"})
+	router.Use(corsMiddleware())
 
 	// CREATE
 	router.GET("/api/v1/validate", taskHandler.RequireAuth, taskHandler.Validate)
