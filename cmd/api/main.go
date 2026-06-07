@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,20 +14,39 @@ import (
 	"github.com/salsapunk/StudyFoxAPI/internal/service"
 )
 
-func main() {
+func init() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+}
 
+func initPool() *pgxpool.Pool {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	config, err := pgxpool.ParseConfig(os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Errorf("%w", err)
+		return nil
+	}
+
+	config.MaxConns = 50
+	config.MaxConnLifetime = time.Hour * 2
+	config.MaxConnIdleTime = 30 * time.Minute
+	config.HealthCheckPeriod = time.Minute * 15
+	
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		log.Errorf("%t", err)
-		return
+		return nil
 	}
+
+	return pool
+}
+
+func main() {
+	pool := initPool()
 
 	taskRepository := repository.NewTaskRepo(pool)
 	taskService := service.NewTaskServ(taskRepository)
@@ -39,30 +59,29 @@ func main() {
 	router.GET("/api/v1/validate", taskHandler.RequireAuth, taskHandler.Validate)
 	router.POST("/api/v1/singup", taskHandler.SingUp)
 	router.POST("/api/v1/login", taskHandler.Login)
-	router.POST("/api/v1/usuario/:matricula/materia", taskHandler.RequireAuth, taskHandler.CriarMateria)
+	router.POST("/api/v1/materia", taskHandler.RequireAuth, taskHandler.CriarMateria)
 	router.POST("/api/v1/materia/:codigo/tarefa", taskHandler.RequireAuth, taskHandler.CriarTarefa)
 
 	// READ
 	router.GET("/api/v1/ping", taskHandler.RequireAuth, taskHandler.CheckHealth)
-	// router.GET("/api/v1/usuario/:matricula", taskHandler.LerUsuario)
-	router.GET("/api/v1/usuario/:matricula/materias", taskHandler.RequireAuth, taskHandler.ListarMaterias)
-	router.GET("/api/v1/usuario/:matricula/materia/:codigo", taskHandler.RequireAuth, taskHandler.LerMateria)
+	router.GET("/api/v1/materias", taskHandler.RequireAuth, taskHandler.ListarMaterias)
+	router.GET("/api/v1/materia/:codigo", taskHandler.RequireAuth, taskHandler.LerMateria)
 	router.GET("/api/v1/materia/:codigo/tarefas", taskHandler.RequireAuth, taskHandler.ListarTarefas)
 	router.GET("/api/v1/materia/:codigo/tarefa/:id", taskHandler.RequireAuth, taskHandler.LerTarefa)
 
 	// UPDATE
-	router.PUT("/api/v1/usuario/:matricula/email", taskHandler.RequireAuth, taskHandler.MudarEmail)
-	router.PUT("/api/v1/usuario/:matricula/senha", taskHandler.RequireAuth, taskHandler.MudarSenha)
-	router.PUT("/api/v1/usuario/:matricula/tema", taskHandler.RequireAuth, taskHandler.MudarTema)
-	router.PUT("/api/v1/usuario/:matricula/materia/:codigo", taskHandler.RequireAuth, taskHandler.MudarNomeMateria)
+	router.PUT("/api/v1/email", taskHandler.RequireAuth, taskHandler.MudarEmail)
+	router.PUT("/api/v1/senha", taskHandler.RequireAuth, taskHandler.MudarSenha)
+	router.PUT("/api/v1/tema", taskHandler.RequireAuth, taskHandler.MudarTema)
+	router.PUT("/api/v1/materia/:codigo", taskHandler.RequireAuth, taskHandler.MudarNomeMateria)
 	router.PUT("/api/v1/materia/:codigo/tarefa/:id/nome", taskHandler.RequireAuth, taskHandler.MudarNomeTarefa)
 	router.PUT("/api/v1/materia/:codigo/tarefa/:id/prazo", taskHandler.RequireAuth, taskHandler.MudarPrazoTarefa)
 	router.PUT("/api/v1/materia/:codigo/tarefa/:id/anotacao", taskHandler.RequireAuth, taskHandler.MudarAnotacaoTarefa)
 	router.PUT("/api/v1/materia/:codigo/tarefa/:id/status", taskHandler.RequireAuth, taskHandler.MudarStatusTarefa)
 
 	// DELETE
-	router.DELETE("/api/v1/usuario/:matricula", taskHandler.RequireAuth, taskHandler.DeletarUsuario)
-	router.DELETE("/api/v1/usuario/:matricula/materia/:codigo", taskHandler.RequireAuth, taskHandler.DeletarMateria)
+	router.DELETE("/api/v1/usuario", taskHandler.RequireAuth, taskHandler.DeletarUsuario)
+	router.DELETE("/api/v1/materia/:codigo", taskHandler.RequireAuth, taskHandler.DeletarMateria)
 	router.DELETE("/api/v1/materia/:codigo/tarefa/:id", taskHandler.RequireAuth, taskHandler.DeletarTarefa)
 
 	router.Run(":8080")

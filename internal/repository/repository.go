@@ -32,7 +32,7 @@ func (tR *TaskRepository) CriarUsuario(ctx context.Context, usuario *model.Usuar
 
 	err := row.Scan(&matricula)
 	if err != nil {
-		return 0, fmt.Errorf("erro ao criar usuário: %s", err.Error())
+		return 0, err
 	}
 
 	return matricula, nil
@@ -48,7 +48,6 @@ func (tR *TaskRepository) CriarMateria(ctx context.Context, materia *model.Mater
 
 	err := row.Scan(&codigo)
 	if err != nil {
-		fmt.Println("scan")
 		return 0, err
 	}
 
@@ -105,7 +104,6 @@ func (tR *TaskRepository) LerUsuario(ctx context.Context, data any) (model.Usuar
 func (tR *TaskRepository) ListarMaterias(ctx context.Context, matricula int) ([]model.Materia, error) {
 	rows, err := tR.pool.Query(ctx, model.LISTAR_MATERIAS, matricula)
 	if err != nil {
-		fmt.Printf("%v", err)
 		return []model.Materia{}, err
 	}
 
@@ -119,7 +117,6 @@ func (tR *TaskRepository) ListarMaterias(ctx context.Context, matricula int) ([]
 			&materia.Matricula,
 		)
 		if err != nil {
-			fmt.Printf("%v", err)
 			return []model.Materia{}, err
 		}
 
@@ -148,10 +145,9 @@ func (tR *TaskRepository) LerMateria(ctx context.Context, matricula int, codigo 
 	return materia, nil
 }
 
-func (tR *TaskRepository) ListarTarefas(ctx context.Context, codigo int) ([]model.Tarefa, error) {
-	rows, err := tR.pool.Query(ctx, model.LISTAR_TAREFAS, codigo)
+func (tR *TaskRepository) ListarTarefas(ctx context.Context, matricula int, codigo int) ([]model.Tarefa, error) {
+	rows, err := tR.pool.Query(ctx, model.LISTAR_TAREFAS, matricula, codigo)
 	if err != nil {
-		fmt.Println(err)
 		return []model.Tarefa{}, err
 	}
 
@@ -168,7 +164,6 @@ func (tR *TaskRepository) ListarTarefas(ctx context.Context, codigo int) ([]mode
 			&tarefa.Status,
 		)
 		if err != nil {
-			fmt.Println(err)
 			return []model.Tarefa{}, err
 		}
 
@@ -180,8 +175,8 @@ func (tR *TaskRepository) ListarTarefas(ctx context.Context, codigo int) ([]mode
 	return tarefas, nil
 }
 
-func (tR *TaskRepository) LerTarefa(ctx context.Context, codigo int, id int) (model.Tarefa, error) {
-	row := tR.pool.QueryRow(ctx, model.LER_TAREFA, codigo, id)
+func (tR *TaskRepository) LerTarefa(ctx context.Context, matricula int, codigo int, id int) (model.Tarefa, error) {
+	row := tR.pool.QueryRow(ctx, model.LER_TAREFA, matricula, codigo, id)
 
 	var tarefa model.Tarefa
 
@@ -272,27 +267,33 @@ func (tR *TaskRepository) MudarStatusTarefa(ctx context.Context, status int, cod
 // DELETE
 
 func (tR *TaskRepository) DeletarUsuario(ctx context.Context, matricula int) error {
-	_, err := tR.pool.Exec(ctx, model.DELETAR_USUARIO, matricula)
+	c, err := tR.pool.Exec(ctx, model.DELETAR_USUARIO, matricula)
 	if err != nil {
 		return err
+	} else if c.RowsAffected() == 0 {
+		return model.ErrUsuarioNotFound
 	}
 
 	return nil
 }
 
 func (tR *TaskRepository) DeletarMateria(ctx context.Context, matricula int, codigo int) error {
-	_, err := tR.pool.Exec(ctx, model.DELETAR_MATERIA, matricula, codigo)
+	c, err := tR.pool.Exec(ctx, model.DELETAR_MATERIA, matricula, codigo)
 	if err != nil {
 		return err
+	} else if c.RowsAffected() == 0 {
+		return model.ErrMateriaNotFound
 	}
 
 	return nil
 }
 
 func (tR *TaskRepository) DeletarTarefa(ctx context.Context, codigo int, id int) error {
-	_, err := tR.pool.Exec(ctx, model.DELETAR_TAREFA, codigo, id)
+	c, err := tR.pool.Exec(ctx, model.DELETAR_TAREFA, codigo, id)
 	if err != nil {
 		return err
+	} else if c.RowsAffected() == 0 {
+		return model.ErrTarefaNotFound
 	}
 
 	return nil

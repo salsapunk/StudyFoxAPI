@@ -3,7 +3,6 @@ package handler
 // arrumar os códigos dos erros
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -33,7 +32,15 @@ func (tH *TaskHandler) CheckHealth(c *gin.Context) {
 }
 
 func (tH *TaskHandler) Validate(c *gin.Context) {
+	ctx := c.Request.Context()
 	usuario, _ := c.Get("usuario")
+
+	user := model.Usuario(usuario.(model.Usuario))
+
+	err := tH.service.Validate(ctx, &user)
+	if err != nil {
+		model.Fail(c, http.StatusBadRequest, err.Error())
+	}
 
 	model.OK(c, usuario)
 }
@@ -43,6 +50,7 @@ func (tH *TaskHandler) RequireAuth(c *gin.Context) {
 
 	tokenString, err := c.Cookie("Authorization")
 	if err != nil {
+		model.Fail(c, http.StatusUnauthorized, err.Error())
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
@@ -51,18 +59,21 @@ func (tH *TaskHandler) RequireAuth(c *gin.Context) {
 		return []byte(os.Getenv("SECRET")), nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
+		model.Fail(c, http.StatusUnauthorized, err.Error())
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		if float64(time.Now().Unix()) > claims["exp"].(float64) {
+			model.Fail(c, http.StatusUnauthorized, "Token expirado")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
 		v, ok := claims["sub"].(float64)
 		if !ok {
+			model.Fail(c, http.StatusUnauthorized, "Erro ao ler subject")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -71,6 +82,7 @@ func (tH *TaskHandler) RequireAuth(c *gin.Context) {
 
 		usuario, err := tH.service.LerUsuario(ctx, matricula)
 		if err != nil || usuario.Matricula == 0 {
+			model.Fail(c, http.StatusUnauthorized, err.Error())
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -78,8 +90,8 @@ func (tH *TaskHandler) RequireAuth(c *gin.Context) {
 		c.Set("usuario", usuario)
 		c.Next()
 	} else {
-		fmt.Println(err)
 		c.AbortWithStatus(http.StatusUnauthorized)
+		model.Fail(c, http.StatusUnauthorized, "Erro ao ler claims")
 		return
 	}
 }
@@ -89,13 +101,18 @@ func (tH *TaskHandler) SingUp(c *gin.Context) {
 	var usuario model.Usuario
 
 	if err := c.ShouldBindJSON(&usuario); err != nil {
-		model.Fail(c, http.StatusBadRequest, 0, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if usuario.Senha == "" {
+		model.Fail(c, http.StatusBadRequest, "Erro: field Senha is empty")
 		return
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(usuario.Senha), 10)
 	if err != nil {
-		model.Fail(c, http.StatusBadRequest, 0, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -103,7 +120,7 @@ func (tH *TaskHandler) SingUp(c *gin.Context) {
 
 	id, err := tH.service.CriarUsuario(ctx, &usuario)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 2, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -115,23 +132,20 @@ func (tH *TaskHandler) Login(c *gin.Context) {
 	var usuario model.Usuario
 
 	if err := c.ShouldBindJSON(&usuario); err != nil {
-		fmt.Println("ler json")
-		model.Fail(c, http.StatusBadRequest, 0, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var usuarioDB model.Usuario
 	usuarioDB, err := tH.service.LerUsuario(ctx, usuario.Email)
 	if err != nil {
-		fmt.Println("ler user")
-		model.Fail(c, http.StatusBadRequest, 0, err)
+		model.Fail(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(usuarioDB.Senha), []byte(usuario.Senha_hash))
+	err = bcrypt.CompareHashAndPassword([]byte(usuarioDB.Senha), []byte(usuario.Senha))
 	if err != nil {
-		fmt.Println("hash")
-		model.Fail(c, http.StatusBadRequest, 0, err)
+		model.Fail(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
@@ -142,7 +156,7 @@ func (tH *TaskHandler) Login(c *gin.Context) {
 
 	tokenString, err := token.SignedString([]byte(os.Getenv("SECRET")))
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 0, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -154,25 +168,20 @@ func (tH *TaskHandler) Login(c *gin.Context) {
 func (tH *TaskHandler) CriarMateria(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	param := c.Param("matricula")
-	matricula, err := strconv.Atoi(param)
-	if err != nil {
-		model.Fail(c, http.StatusBadRequest, http.StatusBadRequest, err)
-		return
-	}
+	usuario, _ := c.Get("usuario")
 
 	var materia model.Materia
-	err = c.ShouldBindJSON(&materia)
+	err := c.ShouldBindJSON(&materia)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 3, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	materia.Matricula = matricula
+	materia.Matricula = usuario.(model.Usuario).Matricula
 
 	codigo, err := tH.service.CriarMateria(ctx, &materia)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 4, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -182,25 +191,27 @@ func (tH *TaskHandler) CriarMateria(c *gin.Context) {
 func (tH *TaskHandler) CriarTarefa(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	usuario, _ := c.Get("usuario")
+
 	param := c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 5, err)
+		model.Fail(c, http.StatusBadGateway, err.Error())
 		return
 	}
 
 	var tarefa model.Tarefa
 	err = c.ShouldBindJSON(&tarefa)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 6, err)
+		model.Fail(c, http.StatusBadGateway, err.Error())
 		return
 	}
 
 	tarefa.Codigo = codigo
 
-	id, err := tH.service.CriarTarefa(ctx, &tarefa)
+	id, err := tH.service.CriarTarefa(ctx, usuario.(model.Usuario).Matricula, &tarefa)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 7, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -208,39 +219,14 @@ func (tH *TaskHandler) CriarTarefa(c *gin.Context) {
 }
 
 // READ
-
-func (tH *TaskHandler) LerUsuario(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	param := c.Param("matricula")
-	matricula, err := strconv.Atoi(param)
-	if err != nil {
-		model.Fail(c, http.StatusBadRequest, http.StatusBadRequest, err)
-		return
-	}
-
-	usuario, err := tH.service.LerUsuario(ctx, matricula)
-	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 8, err)
-		return
-	}
-
-	model.OK(c, usuario)
-}
-
 func (tH *TaskHandler) ListarMaterias(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	param := c.Param("matricula")
-	matricula, err := strconv.Atoi(param)
-	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 9, err)
-		return
-	}
+	usuario, _ := c.Get("usuario")
 
-	materias, err := tH.service.ListarMaterias(ctx, matricula)
+	materias, err := tH.service.ListarMaterias(ctx, usuario.(model.Usuario).Matricula)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 10, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -250,42 +236,39 @@ func (tH *TaskHandler) ListarMaterias(c *gin.Context) {
 func (tH *TaskHandler) LerMateria(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	param := c.Param("matricula")
-	matricula, err := strconv.Atoi(param)
-	if err != nil {
-		model.Fail(c, http.StatusBadRequest, http.StatusBadRequest, err)
-		return
-	}
+	usuario, _ := c.Get("usuario")
 
-	param = c.Param("codigo")
+	param := c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadRequest, http.StatusBadRequest, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	usuario, err := tH.service.LerMateria(ctx, matricula, codigo)
+	materias, err := tH.service.LerMateria(ctx, usuario.(model.Usuario).Matricula, codigo)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 11, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	model.OK(c, usuario)
+	model.OK(c, materias)
 }
 
 func (tH *TaskHandler) ListarTarefas(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	usuario, _ := c.Get("usuario")
+
 	param := c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 12, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	tarefas, err := tH.service.ListarTarefas(ctx, codigo)
+	tarefas, err := tH.service.ListarTarefas(ctx, usuario.(model.Usuario).Matricula, codigo)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 13, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -295,23 +278,25 @@ func (tH *TaskHandler) ListarTarefas(c *gin.Context) {
 func (tH *TaskHandler) LerTarefa(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	usuario, _ := c.Get("usuario")
+
 	param := c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 14, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	param = c.Param("id")
 	id, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 15, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	tarefa, err := tH.service.LerTarefa(ctx, codigo, id)
+	tarefa, err := tH.service.LerTarefa(ctx, usuario.(model.Usuario).Matricula, codigo, id)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 16, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	model.OK(c, tarefa)
@@ -322,23 +307,18 @@ func (tH *TaskHandler) LerTarefa(c *gin.Context) {
 func (tH *TaskHandler) MudarEmail(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	param := c.Param("matricula")
-	matricula, err := strconv.Atoi(param)
-	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 17, err)
-		return
-	}
+	usuarioReq, _ := c.Get("usuario")
 
 	var usuario model.Usuario
-	err = c.ShouldBindJSON(&usuario)
+	err := c.ShouldBindJSON(&usuario)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 18, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = tH.service.MudarEmail(ctx, usuario.Email, matricula)
+	err = tH.service.MudarEmail(ctx, usuario.Email, usuarioReq.(model.Usuario).Matricula)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 19, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -348,23 +328,26 @@ func (tH *TaskHandler) MudarEmail(c *gin.Context) {
 func (tH *TaskHandler) MudarSenha(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	param := c.Param("matricula")
-	matricula, err := strconv.Atoi(param)
-	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 20, err)
-		return
-	}
+	usuarioReq, _ := c.Get("usuario")
 
 	var usuario model.Usuario
-	err = c.ShouldBindJSON(&usuario)
+	err := c.ShouldBindJSON(&usuario)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 21, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = tH.service.MudarSenha(ctx, usuario.Senha, matricula)
+	hash, err := bcrypt.GenerateFromPassword([]byte(usuario.Senha), 10)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 22, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	usuario.Senha = string(hash)
+
+	err = tH.service.MudarSenha(ctx, usuario.Senha, usuarioReq.(model.Usuario).Matricula)
+	if err != nil {
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -374,23 +357,18 @@ func (tH *TaskHandler) MudarSenha(c *gin.Context) {
 func (tH *TaskHandler) MudarTema(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	param := c.Param("matricula")
-	matricula, err := strconv.Atoi(param)
-	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 0, err)
-		return
-	}
+	usuarioReq, _ := c.Get("usuario")
 
 	var usuario model.Usuario
-	err = c.ShouldBindJSON(&usuario)
+	err := c.ShouldBindJSON(&usuario)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 0, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = tH.service.MudarTema(ctx, usuario.Tema, matricula)
+	err = tH.service.MudarTema(ctx, usuario.Tema, usuarioReq.(model.Usuario).Matricula)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 0, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -400,30 +378,25 @@ func (tH *TaskHandler) MudarTema(c *gin.Context) {
 func (tH *TaskHandler) MudarNomeMateria(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	param := c.Param("matricula")
-	matricula, err := strconv.Atoi(param)
-	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 23, err)
-		return
-	}
+	usuarioReq, _ := c.Get("usuario")
 
-	param = c.Param("codigo")
+	param := c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 24, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var materia model.Materia
 	err = c.ShouldBindJSON(&materia)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 25, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = tH.service.MudarNomeMateria(ctx, materia.Nome, matricula, codigo)
+	err = tH.service.MudarNomeMateria(ctx, materia.Nome, usuarioReq.(model.Usuario).Matricula, codigo)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 26, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -433,30 +406,32 @@ func (tH *TaskHandler) MudarNomeMateria(c *gin.Context) {
 func (tH *TaskHandler) MudarNomeTarefa(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	usuario, _ := c.Get("usuario")
+
 	param := c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 27, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	param = c.Param("id")
 	id, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 28, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var tarefa model.Tarefa
 	err = c.ShouldBindJSON(&tarefa)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 29, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = tH.service.MudarNomeTarefa(ctx, tarefa.Nome, codigo, id)
+	err = tH.service.MudarNomeTarefa(ctx, tarefa.Nome, usuario.(model.Usuario).Matricula, codigo, id)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 30, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -466,30 +441,32 @@ func (tH *TaskHandler) MudarNomeTarefa(c *gin.Context) {
 func (tH *TaskHandler) MudarPrazoTarefa(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	usuario, _ := c.Get("usuario")
+
 	param := c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 31, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	param = c.Param("id")
 	id, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 32, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var tarefa model.Tarefa
 	err = c.ShouldBindJSON(&tarefa)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 33, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = tH.service.MudarPrazoTarefa(ctx, tarefa.Prazo, codigo, id)
+	err = tH.service.MudarPrazoTarefa(ctx, tarefa.Prazo, usuario.(model.Usuario).Matricula, codigo, id)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 34, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -499,30 +476,32 @@ func (tH *TaskHandler) MudarPrazoTarefa(c *gin.Context) {
 func (tH *TaskHandler) MudarAnotacaoTarefa(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	usuario, _ := c.Get("usuario")
+
 	param := c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 35, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	param = c.Param("id")
 	id, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 36, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var tarefa model.Tarefa
 	err = c.ShouldBindJSON(&tarefa)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 37, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = tH.service.MudarAnotacaoTarefa(ctx, tarefa.Anotacao, codigo, id)
+	err = tH.service.MudarAnotacaoTarefa(ctx, tarefa.Anotacao, usuario.(model.Usuario).Matricula, codigo, id)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 38, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -532,30 +511,32 @@ func (tH *TaskHandler) MudarAnotacaoTarefa(c *gin.Context) {
 func (tH *TaskHandler) MudarStatusTarefa(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	usuario, _ := c.Get("usuario")
+
 	param := c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 0, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	param = c.Param("id")
 	id, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 0, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var tarefa model.Tarefa
 	err = c.ShouldBindJSON(&tarefa)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 0, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = tH.service.MudarStatusTarefa(ctx, tarefa.Status, codigo, id)
+	err = tH.service.MudarStatusTarefa(ctx, tarefa.Status, usuario.(model.Usuario).Matricula, codigo, id)
 	if err != nil {
-		model.Fail(c, http.StatusBadGateway, 0, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -567,16 +548,11 @@ func (tH *TaskHandler) MudarStatusTarefa(c *gin.Context) {
 func (tH *TaskHandler) DeletarUsuario(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	param := c.Param("matricula")
-	matricula, err := strconv.Atoi(param)
-	if err != nil {
-		model.Fail(c, http.StatusBadRequest, 39, err)
-		return
-	}
+	usuarioReq, _ := c.Get("usuario")
 
-	err = tH.service.DeletarUsuario(ctx, matricula)
+	err := tH.service.DeletarUsuario(ctx, usuarioReq.(model.Usuario).Matricula)
 	if err != nil {
-		model.Fail(c, http.StatusBadRequest, 40, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -586,23 +562,18 @@ func (tH *TaskHandler) DeletarUsuario(c *gin.Context) {
 func (tH *TaskHandler) DeletarMateria(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	param := c.Param("matricula")
-	matricula, err := strconv.Atoi(param)
-	if err != nil {
-		model.Fail(c, http.StatusBadRequest, 41, err)
-		return
-	}
+	usuarioReq, _ := c.Get("usuario")
 
-	param = c.Param("codigo")
+	param := c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadRequest, 42, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = tH.service.DeletarMateria(ctx, matricula, codigo)
+	err = tH.service.DeletarMateria(ctx, usuarioReq.(model.Usuario).Matricula, codigo)
 	if err != nil {
-		model.Fail(c, http.StatusBadRequest, 43, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -612,23 +583,25 @@ func (tH *TaskHandler) DeletarMateria(c *gin.Context) {
 func (tH *TaskHandler) DeletarTarefa(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	usuario, _ := c.Get("usuario")
+
 	param := c.Param("codigo")
 	codigo, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadRequest, 44, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	param = c.Param("id")
 	id, err := strconv.Atoi(param)
 	if err != nil {
-		model.Fail(c, http.StatusBadRequest, 45, err)
+		model.Fail(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = tH.service.DeletarTarefa(ctx, codigo, id)
+	err = tH.service.DeletarTarefa(ctx, usuario.(model.Usuario).Matricula, codigo, id)
 	if err != nil {
-		model.Fail(c, http.StatusBadRequest, 46, err)
+		model.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 

@@ -17,9 +17,9 @@ const (
 	LER_USUARIO_EMAIL = "SELECT matricula, email, senha_hash, tema FROM usuario WHERE email = $1;"
 	LER_USUARIO_MATRI = "SELECT matricula, email, senha_hash, tema FROM usuario WHERE matricula = $1;"
 	LISTAR_MATERIAS   = "SELECT codigo, nome, m.matricula FROM materia m INNER JOIN usuario u ON m.matricula = u.matricula AND u.matricula = $1;" //materias de um usuario
-	LER_MATERIA       = "SELECT codigo, m.nome, u.matricula FROM materia m INNER JOIN usuario u ON u.matricula = $1 AND codigo = $2;"
-	LISTAR_TAREFAS    = "SELECT id, t.nome, anotacao, prazo, t.codigo FROM tarefa t INNER JOIN materia m ON t.codigo = m.codigo AND m.codigo = $1;" // tarefas em uma matéria
-	LER_TAREFA        = "SELECT id, t.nome, anotacao, prazo, t.codigo, status FROM tarefa t INNER JOIN materia m ON m.codigo = $1 AND id = $2;"
+	LER_MATERIA       = "SELECT codigo, nome, matricula FROM materia WHERE matricula = $1 AND codigo = $2;"
+	LISTAR_TAREFAS    = "SELECT id, t.nome, anotacao, prazo, t.codigo, status FROM tarefa t INNER JOIN materia m ON t.codigo = m.codigo AND m.matricula = $1 AND m.codigo = $2;" // tarefas em uma matéria
+	LER_TAREFA        = "SELECT id, t.nome, anotacao, prazo, t.codigo, status FROM tarefa t INNER JOIN materia m ON m.matricula = $1 AND m.codigo = $2 AND id = $3;"
 
 	MUDAR_EMAIL_USR = "UPDATE usuario SET email = $1 WHERE matricula = $2"
 	MUDAR_SENHA_USR = "UPDATE usuario SET senha_hash = $1 WHERE matricula = $2"
@@ -35,23 +35,24 @@ const (
 	DELETAR_TAREFA  = "DELETE FROM tarefa WHERE codigo = $1 AND id = $2"
 )
 
-func ErrNotFound(fragmento string) error {
-	err := fmt.Sprintf("%s não encontrado", fragmento)
+func ErrNew(fragmento string, adj string) error {
+	err := fmt.Sprintf("%s %s", fragmento, adj)
 	Err := errors.New(err)
 	return Err
 }
 
 var (
-	ErrUsuarioNotFound = ErrNotFound("Usuário")
-	ErrMateriaNotFound = ErrNotFound("Matéria")
-	ErrTarefaNotFound  = ErrNotFound("Tarefa")
+	ErrUsuarioNotFound = ErrNew("Usuário", "não encontrado")
+	ErrMateriaNotFound = ErrNew("Matéria", "não encontrado")
+	ErrTarefaNotFound  = ErrNew("Tarefa", "não encontrado")
+	ErrMateriaAuth     = ErrNew("Matéria", "não pertence ao usuário")
+	ErrTarefaAuth      = ErrNew("Tarefa", "não pertence ao usuário")
 )
 
 // Responses
 
 type ErrorInfo struct {
-	Code    int   `json:"code"`
-	Message error `json:"message"`
+	Message string `json:"message"`
 }
 
 type Meta struct {
@@ -75,11 +76,10 @@ func OK(c *gin.Context, data any) {
 	})
 }
 
-func Fail(c *gin.Context, status int, code int, message error) {
+func Fail(c *gin.Context, status int, message string) {
 	c.JSON(status, Response{
 		Success: false,
 		Error: &ErrorInfo{
-			Code:    code,
 			Message: message,
 		},
 	})
