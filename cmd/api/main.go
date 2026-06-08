@@ -39,17 +39,24 @@ func initPool() *pgxpool.Pool {
 }
 
 func corsMiddleware() gin.HandlerFunc {
+	allowedOrigins := strings.Split(os.Getenv("ALLOWED_ORIGIN"), ",")
+
 	return func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", os.Getenv("ALLOWED_ORIGIN"))
+		origin := c.Request.Header.Get("Origin")
+
+		if slices.Contains(allowedOrigins, origin) {
+			c.Header("Access-Control-Allow-Origin", origin)
+		}
+
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		c.Header("Access-Control-Allow-Credentials", "true")
- 
+
 		if c.Request.Method == http.MethodOptions {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
- 
+
 		c.Next()
 	}
 }
