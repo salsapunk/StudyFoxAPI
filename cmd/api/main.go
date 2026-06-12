@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"os"
-	"strings"
-	"slices"
-	"time"
 	"net/http"
+	"os"
+	"slices"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -30,7 +30,7 @@ func initPool() *pgxpool.Pool {
 	config.MaxConnLifetime = time.Hour * 2
 	config.MaxConnIdleTime = 30 * time.Minute
 	config.HealthCheckPeriod = time.Minute * 15
-	
+
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		log.Errorf("%t", err)
@@ -63,7 +63,6 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
-
 func main() {
 	pool := initPool()
 
@@ -77,7 +76,7 @@ func main() {
 
 	// CREATE
 	router.GET("/api/v1/validate", taskHandler.RequireAuth, taskHandler.Validate)
-	router.POST("/api/v1/singup", taskHandler.SingUp)
+	router.POST("/api/v1/signup", taskHandler.SignUp)
 	router.POST("/api/v1/login", taskHandler.Login)
 	router.POST("/api/v1/materia", taskHandler.RequireAuth, taskHandler.CriarMateria)
 	router.POST("/api/v1/materia/:codigo/tarefa", taskHandler.RequireAuth, taskHandler.CriarTarefa)
