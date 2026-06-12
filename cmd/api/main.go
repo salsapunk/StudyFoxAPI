@@ -76,7 +76,7 @@ func main() {
 
 	// CREATE
 	router.GET("/api/v1/validate", taskHandler.RequireAuth, taskHandler.Validate)
-	router.POST("/api/v1/signup", taskHandler.SignUp)
+	router.POST("/api/v1/singup", taskHandler.SingUp)
 	router.POST("/api/v1/login", taskHandler.Login)
 	router.POST("/api/v1/materia", taskHandler.RequireAuth, taskHandler.CriarMateria)
 	router.POST("/api/v1/materia/:codigo/tarefa", taskHandler.RequireAuth, taskHandler.CriarTarefa)
