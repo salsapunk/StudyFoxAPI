@@ -96,7 +96,7 @@ func (tH *TaskHandler) RequireAuth(c *gin.Context) {
 	}
 }
 
-func (tH *TaskHandler) SingUp(c *gin.Context) {
+func (tH *TaskHandler) SignUp(c *gin.Context) {
 	ctx := c.Request.Context()
 	var usuario model.Usuario
 
