@@ -1,0 +1,16 @@
+.git
+.github
+.vscode
+.idea
+*.md
+docs/
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+.env
+.env.*
+bin/
+dist/
+coverage.out
+*.test
+*.prof
