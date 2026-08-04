@@ -83,10 +83,12 @@ Todas as respostas seguem o padrão:
 |---|---|---|---|
 | Id | int | `id_tarefa` | X (gerado) |
 | Nome | string | `nome` | ✅ |
-| Prazo | date | `prazo` | X |
+| Prazo | `pgtype.Date` | `prazo` | X |
 | Anotacao | string | `anotacao` | X |
 | Codigo | int | `codigo_materia` | ✅ |
 | Status | int | `status` | X |
+
+> ⚠️ **Formato de `prazo`:** o campo é serializado como uma **string simples no formato `"YYYY-MM-DD"`** (ex.: `"2025-07-15"`), ou `null` quando não definido. O parser aceita **exclusivamente** esse formato — enviar um objeto ou um datetime completo (`2025-07-15T00:00:00Z`) causa erro de bind no body.
 
 ---
 
@@ -388,7 +390,7 @@ Cria uma nova tarefa em uma matéria.
 {
   "nome": "Lista 1",
   "anotacao": "Exercícios de limites",
-  "prazo": { "Time": "2025-07-15T00:00:00Z", "Valid": true }
+  "prazo": "2025-07-15"
 }
 ```
 
@@ -400,6 +402,8 @@ Cria uma nova tarefa em uma matéria.
 }
 ```
 `data` é o ID gerado para a tarefa.
+
+> ⚠️ **Nota de implementação:** ao contrário dos demais endpoints, este retorna **`502 Bad Gateway`** (em vez de `400`) quando o parâmetro `:codigo` não é um número válido ou o body é malformado. Isso é uma inconsistência conhecida no handler atual, não uma escolha documentada de design — trate `502` aqui como um sinal de requisição inválida, não de erro no servidor upstream.
 
 ---
 
@@ -423,7 +427,7 @@ Lista todas as tarefas de uma matéria.
       "id_tarefa": 101,
       "nome": "Lista 1",
       "anotacao": "Exercícios de limites",
-      "prazo": { "Time": "2025-07-15T00:00:00Z", "Valid": true },
+      "prazo": "2025-07-15",
       "codigo_materia": 7,
       "status": 0
     }
@@ -453,7 +457,7 @@ Retorna uma tarefa específica.
     "id_tarefa": 101,
     "nome": "Lista 1",
     "anotacao": "Exercícios de limites",
-    "prazo": { "Time": "2025-07-15T00:00:00Z", "Valid": true },
+    "prazo": "2025-07-15",
     "codigo_materia": 7,
     "status": 0
   }
@@ -486,7 +490,7 @@ Altera o prazo de uma tarefa.
 
 **Body:**
 ```json
-{ "prazo": { "Time": "2025-08-01T00:00:00Z", "Valid": true } }
+{ "prazo": "2025-08-01" }
 ```
 
 **Resposta de sucesso (200):**
@@ -599,6 +603,7 @@ Verifica se a API está online e o token é válido.
 | 400 | Dados inválidos ou ausentes no body |
 | 401 | Token ausente, inválido ou expirado |
 | 500 | Erro interno no servidor |
+| 502 | *(apenas em `POST /materia/:codigo/tarefa`)* `:codigo` inválido ou body malformado — inconsistência conhecida, ver nota no endpoint |
 
 ---
 
